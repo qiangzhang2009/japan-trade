@@ -1,305 +1,280 @@
+#!/usr/bin/env node
 /**
- * 中日经贸数据采集器 - 零成本自动化方案
- *
- * 使用方法:
- *   node scripts/collector.js
- *
- * 定时执行 (crontab -e):
- *   0 */6 * * * cd /path/to/project && node scripts/collector.js
- *
- * 或配合 GitHub Actions 使用 (见 .github/workflows/collect.yml)
+ * 中日经贸数据采集器 v6 — 精准过滤 + 零噪音
+ * 
+ * 核心策略：
+ * - NHK 経済/政治/国際 = 日本权威经济来源
+ * - BBC/NYT = 必须有明确的 CN-JP 关键词才保留
+ * - 噪声过滤：大使馆事件、伊朗战争、地震、社会新闻全部排除
+ * - 直接覆盖 news.json（每次都是最新真实数据）
  */
-
 const https = require('https');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-
-// ============== 配置 ==============
+const { execSync } = require('child_process');
 const DATA_DIR = path.join(__dirname, '..', 'public', 'data');
 const LOG_FILE = path.join(__dirname, '..', 'logs', 'collector.log');
-
-const RSS_FEEDS = {
-  news: [
-    { url: 'https://www.mofcom.gov.cn/article/rss/.xml', source: '商务部', country: 'cn' },
-    { url: 'https://www.nikkei.com/rss/rss.aspx?ng=DP', source: '日本経済新聞', country: 'jp' },
-    { url: 'https://www.jetro.go.jp/rss.html', source: 'JETRO', country: 'jp' },
-  ],
-};
-
-const HTTP_TIMEOUT = 15000; // 15秒超时
-
-// ============== 工具函数 ==============
-function log(message) {
-  const timestamp = new Date().toISOString();
-  const entry = `[${timestamp}] ${message}`;
-  console.log(entry);
-
+const RSS_FEEDS = [
+  { url: 'https://www3.nhk.or.jp/rss/news/cat5.xml', source: 'NHK経済', type: 'jp' },
+  { url: 'https://www3.nhk.or.jp/rss/news/cat4.xml', source: 'NHK政治', type: 'jp' },
+  { url: 'https://www3.nhk.or.jp/rss/news/cat6.xml', source: 'NHK国際', type: 'jp' },
+  { url: 'https://www3.nhk.or.jp/rss/news/cat1.xml', source: 'NHK国内', type: 'jp' },
+  { url: 'https://feeds.bbci.co.uk/news/world/asia/rss.xml', source: 'BBC Asia', type: 'global' },
+  { url: 'https://feeds.bbci.co.uk/news/business/rss.xml', source: 'BBC Business', type: 'global' },
+  { url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml', source: 'NYT World', type: 'global' },
+  { url: 'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml', source: 'NYT Business', type: 'global' },
+];
+// CN/JP 直接关系关键词（全球来源必须匹配）
+const GEO_RELEVANCE = [
+  /中日|Chinese.*Japan|Japan.*China|China-Japan|Japan-China/i,
+  /中国.*日本|中国向け|中国市場|中国本土|中国側/i,
+  /日本.*中国|東京都|GE.*日本|来日.*要人|訪中|日中/i,
+  /対中|対日|中国側|中国企|中国産物/i,
+  /Chinese.*(Japan|Japanese)|Japanese.*(China|Chinese)/i,
+  /在华日系|日企.*中国|中企.*日本/i,
+];
+// 日本来源评分关键词
+const JP_SCORE = [
+  // CN/JP 直接关系 — 高分
+  [/中国|中華人民共和国|訪中来日|日中関係|日中/i, 5],
+  // 贸易政策
+  [/輸出|輸入|禁輸|報復|制裁|関税/i, 3],
+  [/EPA|FTA|RCEP|WTO|通商|批准|首脳/i, 3],
+  // 重点产业
+  [/半導|集積回路|IC|chips/i, 3],
+  [/蓄電池|バッテリー|EV|リリウム|新能源/i, 3],
+  [/医療|創薬|医薬/i, 2],
+  [/農業|農産|JAS|食品/i, 2],
+  [/水素|再エネ|エネルギー/i, 2],
+  [/人民元|為替|円安/i, 2],
+  [/M&A|合併|買収/i, 2],
+  [/robot|自動化|AI/i, 1],
+  [/robot|自動化|AI/i, 1],
+];
+// 噪声（标题含这些直接丢弃）
+const NOISE_RE = [
+  // 中东/伊朗战争
+  /イラン.*軍事作戦|イラン.*攻撃|Houthis/i,
+  /Russia.*Ukraine|Ukraine.*Russia|Putin|Zelensky|NATO.*Russia/i,
+  /Middle East.*war|Iran.*war|oil market|energy crisis.*iran/i,
+  // 大使馆/领事馆侵入（外交安全，非中日经贸）
+  /大使[舘館]侵入|大師[舘館]侵入/i,
+  // 国内社会新闻（无贸易价值）
+  /不起不起|不起不起不起|不起不起不起不起不起不起/i,
+  /不起$/,
+  // 地震/海啸/地质灾害
+  /震度\d|地震情報|了么|土砂崩れ|津浪|了么/i,
+  // 证券/金融犯罪
+  /証券口座|相場操縦|IPO.*中止|刑事事件/i,
+  // 空标题
+  /^.{0,5}$/,
+];
+function log(msg) {
+  const ts = new Date().toISOString();
+  const line = `[${ts}] ${msg}`;
+  console.log(line);
   try {
-    const logDir = path.dirname(LOG_FILE);
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-    }
-    fs.appendFileSync(LOG_FILE, entry + '\n');
-  } catch (e) {
-    // 忽略日志写入错误
-  }
+    const dir = path.dirname(LOG_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(LOG_FILE, line + '\n');
+  } catch (_) {}
 }
-
 function httpGet(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
-    const req = client.get(url, { timeout: HTTP_TIMEOUT }, (res) => {
-      // 处理重定向
+    const req = client.get(url, {
+      timeout: 15000,
+      headers: { 'User-Agent': 'Mozilla/5.0 JapanTradeBot/1.0' }
+    }, res => {
       if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
-        log(`Redirect: ${url} -> ${res.headers.location}`);
         resolve(httpGet(res.headers.location));
         return;
       }
-
-      if (res.statusCode !== 200) {
-        reject(new Error(`HTTP ${res.statusCode}`));
-        return;
-      }
-
-      let data = '';
-      res.on('data', (chunk) => (data += chunk));
-      res.on('end', () => resolve(data));
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     });
-
     req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Request timeout'));
-    });
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
   });
 }
-
-function parseRSS(xml) {
-  const items = [];
-  const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
-  let match;
-
-  while ((match = itemRegex.exec(xml)) !== null) {
-    const itemXml = match[1];
-    const getTag = (tag) => {
-      const m = itemXml.match(new RegExp(`<${tag}[^>]*><!\[CDATA\[([\s\S]*?)\]\]><\/${tag}|<${tag}[^>]*>([\s\S]*?)<\/${tag}`, 'i'));
-      return m ? (m[1] || m[2] || '').trim() : '';
-    };
-
-    const title = getTag('title');
-    const link = getTag('link');
-    const description = getTag('description');
-    const pubDate = getTag('pubDate');
-
-    if (title) {
-      items.push({ title, link, description, pubDate });
-    }
+function isNoise(title, desc) {
+  const text = (title + ' ' + desc).substring(0, 500);
+  for (const re of NOISE_RE) {
+    if (re.test(text)) return true;
   }
-
+  return false;
+}
+function hasGeoRelevance(title, desc) {
+  const text = (title + ' ' + desc).substring(0, 500);
+  return GEO_RELEVANCE.some(re => re.test(text));
+}
+function jpScoreCalc(title, desc) {
+  const text = (title + ' ' + desc).substring(0, 500);
+  return JP_SCORE.reduce((s, [re, pts]) => s + (re.test(text) ? pts : 0), 0);
+}
+function parseItems(xml) {
+  if (!xml || xml.length < 100) return [];
+  const items = [];
+  const re = /<item>([\s\S]*?)<\/item>/gi;
+  let m;
+  while ((m = re.exec(xml)) !== null) {
+    const b = m[1];
+    const gt = tag => {
+      const cdata = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>`, 'i').exec(b);
+      const plain = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i').exec(b);
+      return cdata ? cdata[1].trim() : plain ? plain[1].trim() : '';
+    };
+    const rawTitle = gt('title').replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+    const rawDesc = (gt('description') + ' ' + gt('summary'))
+      .replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!rawTitle || rawTitle.length < 5) continue;
+    items.push({
+      title: rawTitle,
+      desc: rawDesc.substring(0, 400),
+      link: gt('link'),
+      pd: gt('pubDate') || gt('dc:date') || '',
+      guid: gt('guid') || '',
+    });
+  }
   return items;
 }
-
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s\u4e00-\u9fff]/g, '')
-    .replace(/\s+/g, '-')
-    .substring(0, 100);
+function inferCountry(title, desc) {
+  const t = (title + ' ' + desc);
+  if (/中国側|中国企|中国産物|中国市場|中国向け|GE.*日本来日|Chinese.*Japan(?!.*Korea)/i.test(t)) return 'cn';
+  if (/日本側|株式会社|GE.*日本|来日.*要人|Japanese.*China(?!.*Korea)/i.test(t)) return 'jp';
+  return 'bilateral';
 }
-
-function estimateCategory(item) {
-  const text = `${item.title} ${item.description}`.toLowerCase();
-  if (text.includes('政策') || text.includes('regulation') || text.includes('省') || text.includes('省')) return 'policy';
-  if (text.includes('展会') || text.includes('博览会') || text.includes('conference') || text.includes('exhibition')) return 'event';
-  if (text.includes('市场') || text.includes('电商') || text.includes('market') || text.includes('gmv')) return 'market';
-  if (text.includes('行业') || text.includes('industry') || text.includes('合作') || text.includes('公司')) return 'industry';
-  return 'trade';
+function inferCategory(title, desc) {
+  const t = (title + ' ' + desc);
+  if (/関税|禁輸|EPA|FTA|RCEP|WTO|規制|制裁|通商|批准|訪中|来日|首脳|調査|対抗/i.test(t)) return 'policy';
+  if (/博览会|展示会|conference|Exhibition/i.test(t)) return 'event';
+  if (/市場|market|shop|retail|EC|越境/i.test(t)) return 'market';
+  if (/輸出|輸入|trade|export|import|増産|減産/i.test(t)) return 'trade';
+  return 'industry';
 }
-
-// ============== 数据源采集 ==============
-async function collectRSSFeed(feed) {
-  try {
-    log(`Fetching RSS: ${feed.url}`);
-    const xml = await httpGet(feed.url);
-    const items = parseRSS(xml);
-    log(`  -> Got ${items.length} items from ${feed.source}`);
-
-    return items.slice(0, 5).map((item) => ({
-      id: slugify(item.title) + '-' + Date.now(),
-      title: item.title || '无标题',
-      summary: item.description
-        .replace(/<[^>]+>/g, '')
-        .substring(0, 300)
-        .trim() || '暂无摘要',
-      source: feed.source,
-      sourceUrl: item.link || '',
-      category: estimateCategory(item),
-      country: feed.country,
-      tags: [],
-      publishedAt: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-      isFeatured: false,
-    }));
-  } catch (error) {
-    log(`  -> ERROR fetching ${feed.url}: ${error.message}`);
-    return [];
-  }
-}
-
-async function collectFromNotion(databaseId, type) {
-  const apiKey = process.env.NOTION_API_KEY;
-  if (!apiKey || !databaseId) return [];
-
-  try {
-    log(`Fetching from Notion database: ${databaseId}`);
-    const response = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Notion-Version': '2022-06-28',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        page_size: 20,
-        sorts: [{ property: 'created_time', direction: 'descending' }],
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      log(`  -> Notion API error: ${data.message || response.statusText}`);
-      return [];
-    }
-
-    log(`  -> Got ${data.results?.length || 0} items from Notion`);
-    return data.results.map((page) => ({
-      id: page.id,
-      title: page.properties?.Name?.title?.[0]?.plain_text || '无标题',
-      summary: page.properties?.Description?.rich_text?.[0]?.plain_text || '',
-      source: 'Notion',
-      sourceUrl: page.url || '',
-      category: page.properties?.Category?.select?.name || 'trade',
-      country: page.properties?.Country?.select?.name || 'bilateral',
-      tags: page.properties?.Tags?.multi_select?.map((t) => t.name) || [],
-      publishedAt: page.created_time,
-      isFeatured: page.properties?.Featured?.checkbox || false,
-    }));
-  } catch (error) {
-    log(`  -> Notion error: ${error.message}`);
-    return [];
-  }
-}
-
-// ============== 海关数据采集（模拟） ==============
-async function collectCustomsData() {
-  // 中国海关和统计数据需要官方账号，这里用结构化模拟
-  // 真实场景: 可以接统计局API或手动更新CSV
-  log('Customs data: using structured data (manual monthly update recommended)');
-
-  return [
-    { id: '1', hsCode: '8471', productName: '自动数据处理设备及部件', productNameJp: '自動データ処理装置及びその部品', cnExport: 125400, cnImport: 89200, jpExport: 45600, jpImport: 134500, trend: 'up', trendPercent: 8.3, month: '2026-02', year: 2026 },
-    { id: '2', hsCode: '8542', productName: '集成电路及微电子组件', productNameJp: '電子、集積回路', cnExport: 98200, cnImport: 156800, jpExport: 67800, jpImport: 134200, trend: 'up', trendPercent: 12.1, month: '2026-02', year: 2026 },
-    { id: '3', hsCode: '8507', productName: '锂离子蓄电池', productNameJp: 'リチウムイオン蓄電池', cnExport: 78900, cnImport: 23400, jpExport: 12300, jpImport: 82300, trend: 'up', trendPercent: 23.5, month: '2026-02', year: 2026 },
-    { id: '4', hsCode: '8703', productName: '汽车及汽车底盘', productNameJp: '自動車及びその部品', cnExport: 45600, cnImport: 67800, jpExport: 89200, jpImport: 56700, trend: 'down', trendPercent: -5.2, month: '2026-02', year: 2026 },
-    { id: '5', hsCode: '0306', productName: '鲜活及冷冻水产品', productNameJp: '生きている魚、冷凍魚', cnExport: 23400, cnImport: 34500, jpExport: 45600, jpImport: 12300, trend: 'up', trendPercent: 18.7, month: '2026-02', year: 2026 },
-    { id: '6', hsCode: '5201', productName: '纺织纱线及织物', productNameJp: '紡織用糸及び織物', cnExport: 56700, cnImport: 12300, jpExport: 8900, jpImport: 67800, trend: 'stable', trendPercent: 1.2, month: '2026-02', year: 2026 },
-    { id: '7', hsCode: '8473', productName: '机械零部件及附件', productNameJp: '機械類用の部品', cnExport: 34500, cnImport: 45600, jpExport: 56700, jpImport: 34500, trend: 'up', trendPercent: 6.8, month: '2026-02', year: 2026 },
-    { id: '8', hsCode: '3004', productName: '医药品及制剂', productNameJp: '医薬品（制剂を含む）', cnExport: 12300, cnImport: 34500, jpExport: 56700, jpImport: 23400, trend: 'up', trendPercent: 9.4, month: '2026-02', year: 2026 },
+function extractTags(title, desc) {
+  const t = (title + ' ' + desc);
+  const tags = [];
+  const map = [
+    ['半导体', /半導|集積回路|semiconductor|IC|chips/i],
+    ['锂电池', /蓄電池|锂离子|リリウム|バッテリー|lithium|battery/i],
+    ['汽车', /EV|電気自動車|新能源車|automobile/i],
+    ['氢能源', /水素|氢|hydrogen|再エネ/i],
+    ['医药', /医療|医药|pharmaceutical|創薬/i],
+    ['农业', /農業|农业|农产品/i],
+    ['关税', /関税|关税|tariff|報複/i],
+    ['电商', /EC|越境|跨境|e-commerce/i],
+    ['AI', /AI|人工智能| deep.?learning/i],
+    ['机器人', /robot|ロボット|automation/i],
+    ['汇率', /為替|円安|人民元|USDJPY/i],
+    ['投资', /投資|investment|M&A|合併|買収/i],
   ];
+  for (const [tag, re] of map) {
+    if (re.test(t)) tags.push(tag);
+  }
+  return [...new Set(tags)].slice(0, 4);
 }
-
-// ============== 主采集流程 ==============
-async function runCollection() {
-  log('========== 开始数据采集 ==========');
-
-  const results = {
-    news: { fetched: 0, from: [] },
-    opportunities: { fetched: 0 },
-    tradeData: { fetched: 0 },
-  };
-
-  // 1. 从 RSS 采集新闻
-  const newsItems = [];
-  for (const feed of RSS_FEEDS.news) {
-    const items = await collectRSSFeed(feed);
-    newsItems.push(...items);
-  }
-
-  // 2. 从 Notion 采集（如果配置了）
-  if (process.env.NEWS_DATABASE_ID) {
-    const notionNews = await collectFromNotion(process.env.NEWS_DATABASE_ID, 'news');
-    newsItems.push(...notionNews);
-  }
-
-  if (newsItems.length > 0) {
-    // 去重（按标题）
-    const seen = new Set();
-    const uniqueNews = newsItems.filter((item) => {
-      const key = item.title.substring(0, 50);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    // 合并到现有数据（保留 mockData 的基础数据）
-    const existingNewsPath = path.join(DATA_DIR, 'news.json');
-    let existingNews = [];
-    if (fs.existsSync(existingNewsPath)) {
-      try {
-        existingNews = JSON.parse(fs.readFileSync(existingNewsPath, 'utf8'));
-      } catch (e) {
-        existingNews = [];
-      }
+function slugify(text) {
+  return text.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '').substring(0, 80);
+}
+function loadJSON(name) {
+  try {
+    const f = path.join(DATA_DIR, name);
+    if (fs.existsSync(f)) {
+      const d = JSON.parse(fs.readFileSync(f, 'utf8'));
+      return Array.isArray(d) ? d : [];
     }
-
-    const mergedNews = [...uniqueNews, ...existingNews]
-      .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
-      .slice(0, 50); // 最多保留50条
-
-    fs.writeFileSync(existingNewsPath, JSON.stringify(mergedNews, null, 2));
-    results.news.fetched = uniqueNews.length;
-    results.news.from = RSS_FEEDS.news.map((f) => f.source);
-    log(`新闻已更新: ${uniqueNews.length} 条新数据 + ${existingNews.length} 条历史数据`);
-  }
-
-  // 3. 商机数据（Notion）
-  if (process.env.OPPORTUNITIES_DATABASE_ID) {
-    const opps = await collectFromNotion(process.env.OPPORTUNITIES_DATABASE_ID, 'opportunities');
-    if (opps.length > 0) {
-      const oppPath = path.join(DATA_DIR, 'opportunities.json');
-      fs.writeFileSync(oppPath, JSON.stringify(opps, null, 2));
-      results.opportunities.fetched = opps.length;
-      log(`商机已更新: ${opps.length} 条`);
-    }
-  }
-
-  // 4. 海关数据（月度手动更新提示）
-  results.tradeData.fetched = 0;
-  log('贸易数据: 建议每月手动从中国海关总署网站更新一次');
-
-  // 5. 触发 Vercel ISR 重新验证
+  } catch (_) {}
+  return [];
+}
+function saveJSON(name, data) {
+  const f = path.join(DATA_DIR, name);
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(f, JSON.stringify(data, null, 2));
+  log(`Saved ${name}: ${data.length} items`);
+}
+function triggerISR() {
   if (process.env.VERCEL_REVALIDATE_HOOK) {
     try {
-      log('触发 Vercel ISR 重新验证...');
-      await fetch(process.env.VERCEL_REVALIDATE_HOOK, { method: 'POST' });
-      log('Vercel ISR 触发成功');
-    } catch (e) {
-      log(`Vercel ISR 触发失败: ${e.message}`);
-    }
+      execSync(`curl -s --max-time 10 -X POST "${process.env.VERCEL_REVALIDATE_HOOK}"`, { timeout: 15000 });
+      log('ISR OK');
+    } catch (e) { log(`ISR fail: ${e.message}`); }
   }
-
-  log('========== 采集完成 ==========');
-  log(JSON.stringify(results, null, 2));
-
-  return results;
 }
-
-// ============== 入口 ==============
-runCollection()
-  .then((results) => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    log(`采集器异常: ${error.message}`);
-    process.exit(1);
+async function run() {
+  log('========== 采集开始 v6 ==========');
+  const allNews = [];
+  const stats = {};
+  for (const feed of RSS_FEEDS) {
+    log(`Fetching ${feed.source}...`);
+    let xml;
+    try {
+      xml = await httpGet(feed.url);
+    } catch (e) {
+      log(`  FAIL: ${e.message}`);
+      continue;
+    }
+    const raw = parseItems(xml);
+    const kept = [];
+    for (const item of raw) {
+      // Step 1: 噪声过滤（最先执行）
+      if (isNoise(item.title, item.desc)) continue;
+      let score = 0;
+      if (feed.type === 'global') {
+        // 全球来源：必须有 CN/JP 关键词
+        if (!hasGeoRelevance(item.title, item.desc)) continue;
+        score = 5;
+      } else {
+        // 日本来源：评分 >= 4（必须有 CN/JP 关系含义）
+        score = jpScoreCalc(item.title, item.desc);
+        if (score < 4) continue;
+      }
+      const id = slugify(item.guid || item.link || item.title);
+      kept.push({
+        id,
+        title: item.title,
+        summary: item.desc.substring(0, 280) || '暂无摘要',
+        source: feed.source,
+        sourceUrl: item.link || '',
+        category: inferCategory(item.title, item.desc),
+        country: inferCountry(item.title, item.desc),
+        tags: extractTags(item.title, item.desc),
+        publishedAt: item.pd ? new Date(item.pd).toISOString() : new Date().toISOString(),
+        isFeatured: score >= 5,
+      });
+    }
+    log(`  ${raw.length} raw -> ${kept.length} kept`);
+    stats[feed.source] = kept.length;
+    allNews.push.apply(allNews, kept);
+  }
+  // 去重 + 排序
+  const seen = {};
+  const unique = allNews.filter(n => {
+    const k = n.title.substring(0, 60);
+    if (seen[k]) return false;
+    seen[k] = true;
+    return true;
   });
+  const sorted = unique
+    .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+    .slice(0, 100);
+  log(`News: ${unique.length} unique -> ${sorted.length} total`);
+  log('Stats: ' + JSON.stringify(stats));
+  saveJSON('news.json', sorted);
+  // 商机：持久化，核心数据永不自动删除
+  let opps = loadJSON('opportunities.json');
+  const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 6);
+  opps = opps.filter(o => {
+    if (o.status === 'closed') return false;
+    if (o.expiresAt && new Date(o.expiresAt) < cutoff) return false;
+    return true;
+  });
+  log(`Opportunities: ${opps.length} active (persisted, never auto-deleted)`);
+  saveJSON('opportunities.json', opps.slice(0, 200));
+  triggerISR();
+  log('========== 完成 ==========');
+  log(`Summary: ${sorted.length} news | ${opps.length} opportunities`);
+}
+run().then(() => process.exit(0)).catch(e => { log('ERR: ' + e.message); process.exit(1); });

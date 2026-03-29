@@ -1,7 +1,7 @@
 name: Data Collection & Site Rebuild
 
 on:
-  # 每6小时自动运行一次（免费无限次）
+  # 每6小时自动运行一次（GitHub Actions 免费无限次）
   schedule:
     - cron: '0 */6 * * *'
   # 也可手动触发（GitHub Actions 页面 → Workflows → Data Collection → Run workflow）
