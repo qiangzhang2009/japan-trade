@@ -274,15 +274,129 @@ async function run() {
   log('Translation done');
 
   saveJSON('news.json', sorted);
-  // 商机：持久化，核心数据永不自动删除
+
+  // =============================================
+  // 商机采集：JETRO + 贸促会 + 贸易展会 RSS
+  // =============================================
+  const OPP_FEEDS = [
+    { url: 'https://www.jetro.go.jp/rss/news.xml', source: 'JETRO日本贸易振兴机构', type: 'jp' },
+    { url: 'https://www.ccpit.org/rss/news.xml', source: '中国贸促会', type: 'cn' },
+    { url: 'https://www.nikkeibp.co.jp/rss/techbiz.rdf', source: '日经BP', type: 'jp' },
+    { url: 'https://www.caefi.org.cn/rss.xml', source: '中日经济贸易信息', type: 'cn' },
+    { url: 'https://www.ciie.org/rss/news', source: '中国国际进口博览会', type: 'cn' },
+    { url: 'https://www.meti.go.jp/rss/seisansei/sangyo.xml', source: '日本经产省产业', type: 'jp' },
+  ];
+
+  const COUNTRY_PATTERNS = [
+    [/中国|中国企業|Chinese|中華人民共和国|在华/i, 'cn'],
+    [/日本|日系|Japanese|東京都|株式会社|（株）|経団連/i, 'jp'],
+    [/日中|中日|两国|バイリンガル| bilateral /i, 'bilateral'],
+  ];
+
+  function inferOppCountry(title, desc) {
+    const text = title + desc;
+    for (const [pat, country] of COUNTRY_PATTERNS) {
+      if (pat.test(text)) return country;
+    }
+    return 'bilateral';
+  }
+
+  const TYPE_PATTERNS = [
+    [/募集|招募|Wanted |代理店|经销商|合伙人|供应|寻找合作/i, 'supply'],
+    [/采购|Wanted |需求|募集|探す|仕入| OEM |ODM /i, 'demand'],
+    [/投資|M&A|收购|合资|融资/i, 'investment'],
+    [/共同研发|Joint |提携|合作|コンソーシアム|联盟/i, 'cooperation'],
+  ];
+
+  function inferOppType(title, desc) {
+    const text = title + desc;
+    for (const [pat, type] of TYPE_PATTERNS) {
+      if (pat.test(text)) return type;
+    }
+    return 'demand';
+  }
+
+  const INDUSTRY_PATTERNS = [
+    [/半導|集積回路|EV|蓄電池|バッテリー|新能源|リチウム/i, '半导体/新能源'],
+    [/医療|医薬|創薬|制药|健康|长生/i, '医疗健康'],
+    [/robot|ロボ|自動化|automation|FA |工作機械/i, '智能制造'],
+    [/食品|農産| Agriculture |食品安全|検疫/i, '食品农业'],
+    [/環境|水処理|省エネ|CO2|脱炭素/i, '环保节能'],
+    [/化学|新材料|素材|ハイテク/i, '化工材料'],
+    [/電子|精密|部品|デバイス/i, '精密制造'],
+    [/物流|Eコマース|跨境|通関/i, '跨境电商'],
+  ];
+
+  function inferIndustry(title, desc) {
+    const text = title + desc;
+    for (const [pat, industry] of INDUSTRY_PATTERNS) {
+      if (pat.test(text)) return industry;
+    }
+    return '综合商务';
+  }
+
+  async function collectOpportunities() {
+    const newOpps = [];
+    for (const feed of OPP_FEEDS) {
+      try {
+        log('Fetching opps from ' + feed.source + '...');
+        const xml = await httpGet(feed.url);
+        const items = parseItems(xml);
+        log('  ' + items.length + ' items from ' + feed.source);
+        for (const item of items) {
+          const score = jpScoreCalc(item.title, item.desc);
+          if (score < 3) continue;
+          const type = inferOppType(item.title, item.desc);
+          const industry = inferIndustry(item.title, item.desc);
+          const country = inferOppCountry(item.title, item.desc);
+          const expiresAt = new Date(); expiresAt.setDate(expiresAt.getDate() + 90);
+          const publishedAt = item.pd ? new Date(item.pd).toISOString() : new Date().toISOString();
+          const id = 'auto_' + slugify(item.title).substring(0, 24) + '_' + Date.now();
+          newOpps.push({
+            id, title: item.title,
+            titleCn: dictTranslate(item.title),
+            description: (item.desc || '暂无详细描述').substring(0, 250),
+            descriptionCn: dictTranslate((item.desc || '').substring(0, 250)),
+            type, country, industry,
+            amount: score >= 5 ? '面议（优选）' : '面议',
+            currency: 'CNY',
+            companyName: feed.source,
+            contactEmail: 'contact@china-japan-trade.com',
+            publishedAt, expiresAt: expiresAt.toISOString(),
+            status: 'active', isPremium: score >= 5,
+            region: feed.type === 'jp' ? '日本' : feed.type === 'cn' ? '中国' : '中日',
+            source: feed.source,
+          });
+        }
+      } catch (e) {
+        log('  Opp fetch failed: ' + e.message.substring(0, 50));
+      }
+    }
+    log('Auto opportunities: ' + newOpps.length + ' new items');
+    return newOpps;
+  }
+
+  // 商机持久化
   let opps = loadJSON('opportunities.json');
   const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 6);
-  opps = opps.filter(o => {
+  const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const activeExisting = opps.filter(o => {
     if (o.status === 'closed') return false;
     if (o.expiresAt && new Date(o.expiresAt) < cutoff) return false;
+    if (o.id && o.id.startsWith('auto_') && new Date(o.publishedAt) < thirtyDaysAgo) return false;
     return true;
   });
-  log(`Opportunities: ${opps.length} active (persisted, never auto-deleted)`);
+
+  try {
+    const autoOpps = await collectOpportunities();
+    const existingTitles = new Set(activeExisting.map(o => o.title.substring(0, 40)));
+    const uniqueNew = autoOpps.filter(o => !existingTitles.has(o.title.substring(0, 40)));
+    opps = [...activeExisting, ...uniqueNew];
+    log('Opportunities: ' + opps.length + ' total (' + uniqueNew.length + ' new auto)');
+  } catch (e) {
+    opps = activeExisting;
+    log('Opp collection failed, keeping ' + opps.length);
+  }
   saveJSON('opportunities.json', opps.slice(0, 200));
   triggerISR();
   log('========== 完成 ==========');
