@@ -1,7 +1,9 @@
 export interface NewsArticle {
   id: string;
-  title: string;
-  summary: string;
+  title: string;       // 日语/英语原始标题
+  titleCn: string;    // 中文翻译标题
+  summary: string;     // 日语/英语原始摘要
+  summaryCn: string;   // 中文翻译摘要
   source: string;
   sourceUrl: string;
   category: 'policy' | 'trade' | 'industry' | 'market' | 'event';

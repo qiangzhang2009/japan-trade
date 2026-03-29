@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
-import AdBanner from '@/components/ads/AdBanner';
 import { formatRelativeTime, getOpportunityTypeLabel, getCountryLabel, cn } from '@/lib/utils';
 import type { BusinessOpportunity } from '@/types';
 
@@ -272,10 +271,7 @@ export default function OpportunitiesPage() {
             </Link>
           </div>
         )}
-
-        <AdBanner />
-
-        {/* Post CTA */}
+{/* Post CTA */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white flex flex-col sm:flex-row items-center justify-between gap-6">
           <div>
             <h3 className="text-xl font-bold mb-1">发布您的商机信息</h3>

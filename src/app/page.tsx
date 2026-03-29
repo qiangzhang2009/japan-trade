@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
-import AdBanner from '@/components/ads/AdBanner';
 import { getNews, getTradeData, getOpportunities } from '@/lib/dataService';
 import { formatRelativeTime, getCategoryLabel, getTrendColor, getTrendIcon, getOpportunityTypeLabel, formatCurrency } from '@/lib/utils';
 
@@ -346,8 +345,7 @@ export default function HomePage() {
   return (
     <SiteLayout>
       <HeroSection />
-      <AdBanner className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-6" />
-      <FeaturedNews />
+<FeaturedNews />
       <TradeDataPreview />
       <OpportunitiesPreview />
       <CTASection />

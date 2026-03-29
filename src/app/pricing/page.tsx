@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
-import AdBanner from '@/components/ads/AdBanner';
 import { mockPricingPlans } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
 
@@ -72,9 +71,6 @@ function PricingCard({ plan }: { plan: typeof mockPricingPlans[0] }) {
         <h3 className={cn('text-lg font-black mb-1', plan.highlighted ? 'text-white' : 'text-stone-900')}>
           {plan.name}
         </h3>
-        <p className={cn('text-sm', plan.highlighted ? 'text-blue-200' : 'text-stone-500')}>
-          {plan.nameJp}
-        </p>
         <p className={cn('text-xs mt-2', plan.highlighted ? 'text-blue-200' : 'text-stone-400')}>
           {plan.tagline}
         </p>
@@ -186,10 +182,7 @@ export default function PricingPage() {
             ))}
           </div>
         </section>
-
-        <AdBanner />
-
-        {/* FAQ */}
+{/* FAQ */}
         <section>
           <h2 className="text-2xl font-black text-stone-900 mb-2 text-center">
             常见问题

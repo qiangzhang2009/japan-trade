@@ -3,17 +3,16 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
-import AdBanner from '@/components/ads/AdBanner';
 import { formatRelativeTime, getCategoryLabel, getCountryLabel, cn } from '@/lib/utils';
 import type { NewsArticle } from '@/types';
 
 const categories = [
-  { value: 'all', label: '全部', labelJp: 'すべて' },
-  { value: 'policy', label: '政策法规', labelJp: '政策・法規' },
-  { value: 'trade', label: '贸易动态', labelJp: '貿易動向' },
-  { value: 'industry', label: '行业观察', labelJp: '業界観察' },
-  { value: 'market', label: '市场行情', labelJp: '市場行情' },
-  { value: 'event', label: '展会活动', labelJp: '展示会' },
+  { value: 'all', label: '全部' },
+  { value: 'policy', label: '政策法规' },
+  { value: 'trade', label: '贸易动态' },
+  { value: 'industry', label: '行业观察' },
+  { value: 'market', label: '市场行情' },
+  { value: 'event', label: '展会活动' },
 ];
 
 const countries = [
@@ -24,6 +23,10 @@ const countries = [
 ];
 
 function NewsCard({ article, featured = false }: { article: NewsArticle; featured?: boolean }) {
+  // 显示中文标题，fallback 到原标题
+  const displayTitle = article.titleCn || article.title;
+  const displaySummary = article.summaryCn || article.summary;
+
   return (
     <article className={`group ${featured ? 'lg:col-span-2' : ''}`}>
       <Link href={`/news/${article.id}`} className="block h-full">
@@ -59,10 +62,10 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
                 'font-bold text-stone-900 leading-snug mb-2 group-hover:text-blue-600 transition-colors',
                 featured ? 'text-lg' : 'text-base'
               )}>
-                {article.title}
+                {displayTitle}
               </h3>
               <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">
-                {article.summary}
+                {displaySummary}
               </p>
             </div>
             <div className="mt-3 flex items-center justify-between">
@@ -114,7 +117,7 @@ export default function NewsPage() {
       <div className="bg-white border-b border-stone-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <h1 className="text-3xl font-black text-stone-900 mb-2">经贸资讯</h1>
-          <p className="text-stone-500">中日双边贸易资讯、政策动态与行业观察，每日更新</p>
+          <p className="text-stone-500">中日双边贸易资讯、政策动态与行业观察，每日自动更新</p>
         </div>
       </div>
 
@@ -133,8 +136,7 @@ export default function NewsPage() {
                     : 'bg-white text-stone-600 border-stone-200 hover:border-blue-200 hover:text-blue-600'
                 )}
               >
-                <span>{cat.label}</span>
-                <span className="ml-1.5 text-xs opacity-60">{cat.labelJp}</span>
+                {cat.label}
               </button>
             ))}
           </div>
@@ -193,8 +195,6 @@ export default function NewsPage() {
             <p className="text-stone-500">暂无符合条件的资讯</p>
           </div>
         )}
-
-        <AdBanner className="mt-12" />
       </div>
     </SiteLayout>
   );

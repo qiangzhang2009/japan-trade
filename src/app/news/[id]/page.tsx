@@ -1,15 +1,14 @@
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
-import AdBanner from '@/components/ads/AdBanner';
-import { mockNews } from '@/lib/mockData';
-import { formatDate, getCategoryLabel } from '@/lib/utils';
+import { getNewsById } from '@/lib/dataService';
+import { formatDate, getCategoryLabel, getCountryLabel } from '@/lib/utils';
 
 export default async function NewsDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const article = mockNews.find((n) => n.id === params.id);
+  const article = await getNewsById(params.id);
 
   if (!article) {
     return (
@@ -26,6 +25,11 @@ export default async function NewsDetailPage({
     );
   }
 
+  // 优先显示中文标题
+  const displayTitle = article.titleCn || article.title;
+  const displaySummary = article.summaryCn || article.summary;
+  const breadcrumbTitle = displayTitle.length > 20 ? displayTitle.slice(0, 20) + '...' : displayTitle;
+
   return (
     <SiteLayout>
       <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -35,7 +39,7 @@ export default async function NewsDetailPage({
           <span>/</span>
           <Link href="/news" className="hover:text-blue-600 transition-colors">经贸资讯</Link>
           <span>/</span>
-          <span className="text-stone-600 truncate max-w-xs">{article.title.slice(0, 20)}...</span>
+          <span className="text-stone-600 truncate max-w-xs">{breadcrumbTitle}</span>
         </nav>
 
         {/* Article Header */}
@@ -49,12 +53,12 @@ export default async function NewsDetailPage({
               article.country === 'cn' ? 'bg-red-50 text-red-600 border-red-100' :
               'bg-blue-50 text-blue-600 border-blue-100'
             }`}>
-              {article.country === 'bilateral' ? '中日双边' : article.country === 'cn' ? '中国' : '日本'}
+              {getCountryLabel(article.country)}
             </span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-black text-stone-900 leading-tight mb-6">
-            {article.title}
+            {displayTitle}
           </h1>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-stone-500 pb-6 border-b border-stone-200">
@@ -82,7 +86,7 @@ export default async function NewsDetailPage({
         {/* Article Body */}
         <div className="prose prose-stone max-w-none mb-12">
           <p className="text-lg text-stone-700 leading-relaxed font-medium mb-6">
-            {article.summary}
+            {displaySummary}
           </p>
           <p className="text-base text-stone-600 leading-relaxed">
             本资讯来源于{article.source}，由中日经贸通自动采集并整理。如需了解更多详细信息，
@@ -118,8 +122,6 @@ export default async function NewsDetailPage({
             </svg>
           </a>
         </div>
-
-        <AdBanner />
       </article>
     </SiteLayout>
   );

@@ -13,6 +13,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { batchTranslate } = require('./translation.js');
 const DATA_DIR = path.join(__dirname, '..', 'public', 'data');
 const LOG_FILE = path.join(__dirname, '..', 'logs', 'collector.log');
 const RSS_FEEDS = [
@@ -262,6 +263,16 @@ async function run() {
     .slice(0, 100);
   log(`News: ${unique.length} unique -> ${sorted.length} total`);
   log('Stats: ' + JSON.stringify(stats));
+
+  // 翻译为中文（使用 DeepSeek API 或本地字典 fallback）
+  log('Translating to Chinese...');
+  const translated = await batchTranslate(sorted, process.env.DEEPSEEK_API_KEY);
+  translated.forEach((item, i) => {
+    sorted[i].titleCn = item.titleCn || sorted[i].title;
+    sorted[i].summaryCn = item.summaryCn || sorted[i].summary;
+  });
+  log('Translation done');
+
   saveJSON('news.json', sorted);
   // 商机：持久化，核心数据永不自动删除
   let opps = loadJSON('opportunities.json');

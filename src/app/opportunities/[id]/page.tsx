@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
-import AdBanner from '@/components/ads/AdBanner';
 import { mockOpportunities } from '@/lib/mockData';
 import { formatDate, formatRelativeTime, getOpportunityTypeLabel, getCountryLabel, formatCurrency, cn } from '@/lib/utils';
 
@@ -128,9 +127,7 @@ export default async function OpportunityDetailPage({
                 </div>
               </div>
             </div>
-
-            <AdBanner />
-          </div>
+</div>
 
           {/* Sidebar */}
           <div className="space-y-5">

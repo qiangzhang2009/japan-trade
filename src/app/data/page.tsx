@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
-import AdBanner from '@/components/ads/AdBanner';
 import { formatCurrency, getTrendColor, getTrendIcon, cn } from '@/lib/utils';
 import type { TradeData } from '@/types';
 
@@ -208,10 +207,7 @@ export default function DataPage() {
 
         {/* Data Table */}
         <TradeDataTable />
-
-        <AdBanner />
-
-        {/* API Section */}
+{/* API Section */}
         <div className="bg-gradient-to-br from-stone-900 to-stone-800 rounded-2xl p-8 text-white">
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
             <div className="flex-1">
