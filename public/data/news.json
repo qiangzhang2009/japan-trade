@@ -1,0 +1,114 @@
+[
+  {
+    "id": "1",
+    "title": "日本2024年对华直接投资创历史新高，制造业回流趋势明显",
+    "summary": "日本财务省数据显示，2024年日本对华直接投资达到235亿美元，同比增长12.3%，其中高端制造业和绿色能源领域投资增长尤为显著。",
+    "source": "日本经济新闻",
+    "sourceUrl": "https://www.nikkei.com",
+    "category": "trade",
+    "country": "bilateral",
+    "tags": ["投资", "制造业", "绿色能源"],
+    "publishedAt": "2026-03-28T10:30:00Z",
+    "isFeatured": true
+  },
+  {
+    "id": "2",
+    "title": "中国商务部发布《中日经贸合作白皮书》，提出30项合作倡议",
+    "summary": "白皮书涵盖数字经济、绿色低碳、医疗健康、现代农业等八大重点领域，提出构建中日新时代务实合作新格局的具体措施。",
+    "source": "商务部官网",
+    "sourceUrl": "https://www.mofcom.gov.cn",
+    "category": "policy",
+    "country": "bilateral",
+    "tags": ["政策", "白皮书", "数字经济"],
+    "publishedAt": "2026-03-27T08:00:00Z",
+    "isFeatured": true
+  },
+  {
+    "id": "3",
+    "title": "东京电力与中国国家电网签署智能电网合作协议",
+    "summary": "双方将在可再生能源并网、储能技术、电力市场改革等领域开展深度合作，项目总规模预计达50亿美元。",
+    "source": "共同社",
+    "sourceUrl": "https://kyodo.co.jp",
+    "category": "industry",
+    "country": "jp",
+    "tags": ["电力", "智能电网", "合作"],
+    "publishedAt": "2026-03-26T14:20:00Z"
+  },
+  {
+    "id": "4",
+    "title": "中日贸易额突破3800亿美元，锂电池和半导体材料成新增长点",
+    "summary": "据海关总署统计，2025年中日双边贸易额达3847亿美元，其中锂电池产业链产品和半导体材料贸易增速超过40%。",
+    "source": "海关总署",
+    "sourceUrl": "http://www.customs.gov.cn",
+    "category": "trade",
+    "country": "bilateral",
+    "tags": ["贸易额", "锂电池", "半导体"],
+    "publishedAt": "2026-03-25T09:15:00Z"
+  },
+  {
+    "id": "5",
+    "title": "日本农林水产省扩大中国产食品进口清单，清单数量增至328项",
+    "summary": "日本农林水产省宣布更新进口食品清单，新增42项中国产食品，包括部分水产品和农产品，进一步便利中日农产品贸易。",
+    "source": "农林水产省",
+    "sourceUrl": "https://www.maff.go.jp",
+    "category": "policy",
+    "country": "jp",
+    "tags": ["农业", "食品", "进口"],
+    "publishedAt": "2026-03-24T11:00:00Z"
+  },
+  {
+    "id": "6",
+    "title": "日本企业浙江投资热潮：丰田联手比亚迪建第三工厂",
+    "summary": "丰田汽车与比亚迪联合宣布，将在浙江投资25亿美元建设新能源整车工厂，年产能30万辆，预计2027年投产。",
+    "source": "朝日新闻",
+    "sourceUrl": "https://www.asahi.com",
+    "category": "industry",
+    "country": "cn",
+    "tags": ["汽车", "新能源", "投资"],
+    "publishedAt": "2026-03-23T16:45:00Z"
+  },
+  {
+    "id": "7",
+    "title": "第28届上海国际工业博览会今日开幕，200家日企参展",
+    "summary": "本届工博会以"智能制造与绿色转型"为主题，展位面积达36万平方米，参展日企数量同比增长18%，创历届之最。",
+    "source": "东博会组委会",
+    "sourceUrl": "https://ciif.ciip-expo.com",
+    "category": "event",
+    "country": "cn",
+    "tags": ["展会", "工博会", "智能制造"],
+    "publishedAt": "2026-03-22T08:30:00Z"
+  },
+  {
+    "id": "8",
+    "title": "日元贬值推动中日电商贸易爆发，跨境平台GMV增长67%",
+    "summary": "受日元持续走弱影响，日本消费者海淘中国商品热情高涨，阿里巴巴速卖通和拼多多Temu在日用户数均突破500万。",
+    "source": "Nikkei Asia",
+    "sourceUrl": "https://asia.nikkei.com",
+    "category": "market",
+    "country": "jp",
+    "tags": ["电商", "日元", "跨境"],
+    "publishedAt": "2026-03-21T10:00:00Z"
+  },
+  {
+    "id": "9",
+    "title": "中日医药合作进入深水区，仿制药一致性评价合作加速",
+    "summary": "国家药监局与日本PMDA签署联合声明，在药品审评、监管科学、临床试验等领域深化合作，推动中日制药产业协同发展。",
+    "source": "药监局官网",
+    "sourceUrl": "https://www.nmpa.gov.cn",
+    "category": "industry",
+    "country": "bilateral",
+    "tags": ["医药", "仿制药", "监管"],
+    "publishedAt": "2026-03-20T13:00:00Z"
+  },
+  {
+    "id": "10",
+    "title": "中国恢复日本水产品进口，首批检验合格产品通关",
+    "summary": "中国海关总署公告称，恢复进口日本福岛等10个都县以外地区的水产品，首批通过检验的扇贝和海参产品已顺利通关。",
+    "source": "新华社",
+    "sourceUrl": "https://www.xinhuanet.com",
+    "category": "trade",
+    "country": "cn",
+    "tags": ["水产品", "进口", "通关"],
+    "publishedAt": "2026-03-19T15:30:00Z"
+  }
+]

@@ -1,0 +1,250 @@
+{
+  "name": "中日经贸数据采集工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "minutesInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "定时触发 (每12小时)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.jetro.go.jp/news/releases/",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "body"
+            }
+          }
+        }
+      },
+      "id": "jetro-rss",
+      "name": "JETRO 日本贸易振兴机构",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 100]
+    },
+    {
+      "parameters": {
+        "url": "https://www.mofcom.gov.cn/article/rss/",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "body"
+            }
+          }
+        }
+      },
+      "id": "mofcom-rss",
+      "name": "中国商务部 RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 250]
+    },
+    {
+      "parameters": {
+        "url": "https://www.meti.go.jp/english/press/release/rss/",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "body"
+            }
+          }
+        }
+      },
+      "id": "meti-rss",
+      "name": "日本経産省 RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://www.customs.gov.cn/rss",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "body"
+            }
+          }
+        }
+      },
+      "id": "customs-rss",
+      "name": "中国海关总署 RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 数据清洗：标准化新闻条目\nconst items = $input.all();\nconst cleaned = items.map((item, index) => {\n  const data = item.json;\n  \n  // 提取标题\n  const title = data.title || data.name || data.headline || '';\n  \n  // 提取摘要\n  const summary = data.description || data.summary || data.contentSnippet || '';\n  \n  // 提取链接\n  const sourceUrl = data.link || data.url || data.guid || '';\n  \n  // 提取发布时间\n  const publishedAt = data.pubDate || data.published || data.date || new Date().toISOString();\n  \n  // 提取来源\n  const source = data['dc:creator'] || data.author || data.source || '未知来源';\n  \n  // 智能分类\n  const content = (title + ' ' + summary).toLowerCase();\n  let category = 'trade';\n  if (content.includes('政策') || content.includes('法') || content.includes('規制') || content.includes('通知')) category = 'policy';\n  else if (content.includes('博览') || content.includes('展会') || content.includes('フェア') || content.includes('見本市')) category = 'event';\n  else if (content.includes('市場') || content.includes('价格') || content.includes('price')) category = 'market';\n  else if (content.includes('産業') || content.includes('行业') || content.includes('industry')) category = 'industry';\n  \n  // 判断国家\n  let country = 'bilateral';\n  if (content.includes('中国') && !content.includes('日本')) country = 'cn';\n  else if (content.includes('日本') && !content.includes('中国')) country = 'jp';\n  \n  return {\n    json: {\n      id: `${Date.now()}-${index}`,\n      title: title.trim(),\n      summary: summary.trim().slice(0, 500),\n      source: source.trim(),\n      sourceUrl: sourceUrl,\n      category,\n      country,\n      tags: [],\n      publishedAt: new Date(publishedAt).toISOString(),\n      collectedAt: new Date().toISOString(),\n      collectionSource: data.collectionSource || 'rss'\n    }\n  };\n});\n\nreturn cleaned;"
+      },
+      "id": "clean-news",
+      "name": "数据清洗 (新闻)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AI 生成摘要和标签\nconst items = $input.all();\nconst results = [];\n\n// 模拟 AI 增强（实际使用 OpenAI / Claude API）\nfor (const item of items) {\n  const data = item.json;\n  const title = data.title || '';\n  const summary = data.summary || '';\n  const content = title + ' ' + summary;\n  \n  // 简单关键词提取作为标签\n  const keywords = [];\n  const keywordMap = {\n    '投资': '投资',\n    '新能源': '新能源',\n    '半导体': '半导体',\n    '汽车': '汽车',\n    '医药': '医药',\n    '农业': '农业',\n    '贸易': '贸易',\n    '电商': '电商',\n    '机器人': '机器人',\n    'AI': 'AI',\n    '精密': '精密制造',\n    '电池': '新能源',\n    '制造': '制造业',\n    '合作': '合作',\n    '关税': '关税'\n  };\n  \n  for (const [key, tag] of Object.entries(keywordMap)) {\n    if (content.includes(key)) keywords.push(tag);\n  }\n  \n  // 去重\n  const uniqueTags = [...new Set(keywords)].slice(0, 5);\n  \n  // 生成摘要（实际调用 AI）\n  const aiSummary = summary.length > 100 \n    ? summary \n    : summary + ' — 本资讯由中日经贸通自动采集整理。';\n  \n  results.push({\n    json: {\n      ...data,\n      tags: uniqueTags,\n      summary: aiSummary,\n      isFeatured: data.category === 'trade' && uniqueTags.length >= 2\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "ai-enhance",
+      "name": "AI 摘要生成 & 标签提取",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.NOTION_API_URL}}/databases/={{$env.NEWS_DATABASE_ID}}/pages",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.NOTION_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Parent",
+              "value": { "database_id": "{{$env.NEWS_DATABASE_ID}}" }
+            },
+            {
+              "name": "Properties",
+              "value": "={{ JSON.parse($json.aiProperties || '{}') }}"
+            }
+          ]
+        }
+      },
+      "id": "save-to-notion",
+      "name": "保存到 Notion 数据库",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 触发 Vercel Webhook 重新验证页面\nconst data = $('AI 摘要生成 & 标签提取').all();\n\n// 返回 webhook 调用\nreturn [{\n  json: {\n    webhookUrl: process.env.VERCEL_REVALIDATE_HOOK,\n    tags: data.flatMap(d => d.json.tags || []),\n    count: data.length\n  }\n}];"
+      },
+      "id": "prepare-webhook",
+      "name": "准备增量再验证",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.webhookUrl}}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "paths",
+              "value": ["[/news](/news)", "[/data](/data)", "/"]
+            }
+          ]
+        }
+      },
+      "id": "vercel-revalidate",
+      "name": "触发 Vercel ISR 重新生成",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1500, 100]
+    },
+    {
+      "parameters": {
+        "to": "={{$env.NOTIFICATION_EMAIL}}",
+        "subject": "中日经贸通 - 数据采集报告 {{$now.format('YYYY-MM-DD')}}",
+        "body": "={{ $json.report || '采集完成，无新增内容' }}"
+      },
+      "id": "notify-admin",
+      "name": "发送完成通知邮件",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1.1,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "定时触发 (每12小时)": {
+      "main": [
+        [
+          { "node": "JETRO 日本贸易振兴机构", "type": "main", "index": 0 },
+          { "node": "中国商务部 RSS", "type": "main", "index": 0 },
+          { "node": "日本経産省 RSS", "type": "main", "index": 0 },
+          { "node": "中国海关总署 RSS", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "JETRO 日本贸易振兴机构": {
+      "main": [
+        [{ "node": "数据清洗 (新闻)", "type": "main", "index": 0 }]
+      ]
+    },
+    "中国商务部 RSS": {
+      "main": [
+        [{ "node": "数据清洗 (新闻)", "type": "main", "index": 0 }]
+      ]
+    },
+    "日本経産省 RSS": {
+      "main": [
+        [{ "node": "数据清洗 (新闻)", "type": "main", "index": 0 }]
+      ]
+    },
+    "中国海关总署 RSS": {
+      "main": [
+        [{ "node": "数据清洗 (新闻)", "type": "main", "index": 0 }]
+      ]
+    },
+    "数据清洗 (新闻)": {
+      "main": [
+        [{ "node": "AI 摘要生成 & 标签提取", "type": "main", "index": 0 }]
+      ]
+    },
+    "AI 摘要生成 & 标签提取": {
+      "main": [
+        [{ "node": "保存到 Notion 数据库", "type": "main", "index": 0 }],
+        [{ "node": "准备增量再验证", "type": "main", "index": 0 }],
+        [{ "node": "发送完成通知邮件", "type": "main", "index": 0 }]
+      ]
+    },
+    "准备增量再验证": {
+      "main": [
+        [{ "node": "触发 Vercel ISR 重新生成", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "timezone": "Asia/Shanghai",
+    "errorWorkflow": "{{$env.ERROR_WORKFLOW_ID}}"
+  },
+  "staticData": null,
+  "tags": ["中日经贸", "自动化", "数据采集"],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "templateId": "china-japan-trade-collection"
+  }
+}

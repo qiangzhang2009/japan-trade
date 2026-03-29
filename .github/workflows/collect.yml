@@ -1,0 +1,126 @@
+name: Data Collection & Site Rebuild
+
+on:
+  # 每6小时自动运行一次（免费无限次）
+  schedule:
+    - cron: '0 */6 * * *'
+  # 也可手动触发（GitHub Actions 页面 → Workflows → Data Collection → Run workflow）
+  workflow_dispatch:
+    inputs:
+      force_revalidate:
+        description: '强制触发 Vercel ISR 重新验证'
+        required: false
+        default: 'true'
+        type: boolean
+
+  push:
+    branches:
+      - main
+    paths:
+      - 'public/data/**'
+      - 'scripts/**'
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  collect-data:
+    name: 采集经贸数据
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装 Puppeteer（用于抓取JS渲染页面）
+        run: npx playwright install-deps && npx playwright install chromium
+
+      - name: 运行数据采集器
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NEWS_DATABASE_ID: ${{ secrets.NEWS_DATABASE_ID }}
+          OPPORTUNITIES_DATABASE_ID: ${{ secrets.OPPORTUNITIES_DATABASE_ID }}
+          VERCEL_REVALIDATE_HOOK: ${{ secrets.VERCEL_REVALIDATE_HOOK }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node scripts/collector.js
+
+      - name: 检查数据变更
+        id: changed
+        run: |
+          if git diff --quiet public/data/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "没有新数据，跳过提交"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "检测到数据变更"
+          fi
+
+      - name: 提交并推送新数据
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add public/data/
+          git diff --cached --stat
+          git commit -m "chore: 自动更新经贸数据 $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          git push
+
+      - name: 触发 Vercel ISR
+        if: github.event.inputs.force_revalidate == 'true' || steps.changed.outputs.changed == 'true'
+        env:
+          VERCEL_REVALIDATE_HOOK: ${{ secrets.VERCEL_REVALIDATE_HOOK }}
+        run: |
+          if [ -n "$VERCEL_REVALIDATE_HOOK" ]; then
+            echo "触发 Vercel ISR 重新验证..."
+            curl -s -X POST "$VERCEL_REVALIDATE_HOOK" \
+              -H "Content-Type: application/json" \
+              -d '{"path": "/"}' \
+              -w "\nHTTP Status: %{http_code}\n"
+          else
+            echo "VERCEL_REVALIDATE_HOOK 未配置，跳过 ISR 触发"
+          fi
+
+  build-deploy:
+    name: 构建并部署
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # 只有当有数据变更时才构建（节省 GitHub Actions 分钟数）
+    needs: collect-data
+    if: needs.collect-data.outputs.changed == 'true' || github.event.inputs.force_revalidate == 'true'
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建站点
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://china-japan-trade.vercel.app' }}
+        run: npm run build
+
+      - name: 部署到 Vercel（预览）
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./
