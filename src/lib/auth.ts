@@ -8,12 +8,12 @@ const HAS_REDIS = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_R
 
 // ─── Default hardcoded admin (used when env vars are not set) ───────────────
 const DEFAULT_ADMIN_EMAIL = 'admin@asiabridge.com';
-const DEFAULT_ADMIN_PASSWORD = 'AsiaBridge2026!';
+const DEFAULT_ADMIN_PASSWORD_HASH = '$2a$12$7bX20h4tVK7tUNiXjBjc2uYKiMZl2m9x4Jl9cCw0wIGAAqe9HdT.i'; // AsiaBridge2026!
 const DEFAULT_ADMIN_NAME = '平台管理员';
 
 // ─── Env-var admin (Vercel-compatible, no DB writes needed) ─────────────────
 const ENV_ADMIN_EMAIL = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
-const ENV_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
+const ENV_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD; // optional override
 const ENV_ADMIN_NAME = process.env.ADMIN_NAME || DEFAULT_ADMIN_NAME;
 
 export type { UserRole, UserStatus };
@@ -196,7 +196,7 @@ export async function createUser(data: {
 export async function findUserByEmail(email: string): Promise<AuthUser | null> {
   // Default admin always available (supports both prod and dev)
   if (ENV_ADMIN_EMAIL && email.toLowerCase() === ENV_ADMIN_EMAIL.toLowerCase()) {
-    return buildEnvAdminUser();
+    return buildEnvAdminUser(ENV_ADMIN_PASSWORD);
   }
   const db = await readDB();
   return db.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
@@ -205,18 +205,21 @@ export async function findUserByEmail(email: string): Promise<AuthUser | null> {
 export async function findUserById(id: string): Promise<AuthUser | null> {
   // Env admin has fixed ID
   if (ENV_ADMIN_EMAIL && id === 'env-admin') {
-    return buildEnvAdminUser();
+    return buildEnvAdminUser(ENV_ADMIN_PASSWORD);
   }
   const db = await readDB();
   return db.users.find((u) => u.id === id) || null;
 }
 
-function buildEnvAdminUser(): AuthUser {
+function buildEnvAdminUser(passwordOverride?: string): AuthUser {
   const now = new Date().toISOString();
+  const passwordHash = passwordOverride
+    ? hashPassword(passwordOverride)
+    : DEFAULT_ADMIN_PASSWORD_HASH;
   return {
     id: 'env-admin',
     email: ENV_ADMIN_EMAIL!.toLowerCase(),
-    passwordHash: hashPassword(ENV_ADMIN_PASSWORD!),
+    passwordHash,
     companyName: '平台管理',
     contactName: ENV_ADMIN_NAME,
     phone: '',
@@ -270,7 +273,7 @@ export async function deleteUser(id: string): Promise<boolean> {
 export async function getAllUsers(): Promise<AuthUser[]> {
   const db = await readDB();
   if (ENV_ADMIN_EMAIL) {
-    return [buildEnvAdminUser(), ...db.users];
+    return [buildEnvAdminUser(ENV_ADMIN_PASSWORD), ...db.users];
   }
   return db.users;
 }
