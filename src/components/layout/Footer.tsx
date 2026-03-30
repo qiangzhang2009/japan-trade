@@ -9,19 +9,20 @@ const footerLinks: {
   product: {
     title: '产品服务',
     links: [
-      { label: '经贸资讯', href: '/news' },
-      { label: '贸易数据', href: '/data' },
       { label: '商机广场', href: '/opportunities' },
+      { label: '行业版块', href: '/industries' },
       { label: '会员服务', href: '/pricing' },
     ],
   },
-  data: {
-    title: '数据来源',
+    markets: {
+    title: '目标市场',
     links: [
-      { label: '日本贸易振兴机构 (JETRO)', href: 'https://www.jetro.go.jp', external: true },
-      { label: '中国商务部', href: 'https://www.mofcom.gov.cn', external: true },
-      { label: '日本经济产业省', href: 'https://www.meti.go.jp', external: true },
-      { label: '中国海关总署', href: 'http://www.customs.gov.cn', external: true },
+      { label: '日本', href: '/countries/japan' },
+      { label: '韩国', href: '/countries/south-korea' },
+      { label: '新加坡', href: '/countries/singapore' },
+      { label: '越南', href: '/countries/vietnam' },
+      { label: '印尼', href: '/countries/indonesia' },
+      { label: '马来西亚', href: '/countries/malaysia' },
     ],
   },
   company: {
@@ -31,6 +32,15 @@ const footerLinks: {
       { label: '使用条款', href: '/terms' },
       { label: '隐私政策', href: '/privacy' },
       { label: '联系方式', href: '/contact' },
+      { label: '登录账号', href: '/login' },
+    ],
+  },
+  network: {
+    title: '集团站点',
+    links: [
+      { label: 'AfricaZero 非洲零关税', href: 'https://africa.zxqconsulting.com/', external: true },
+      { label: '上海张小强企业咨询', href: 'https://www.zxqconsulting.com/', external: true },
+      { label: 'Global2China 海外优品', href: 'https://global2china.zxqconsulting.com/', external: true },
     ],
   },
 };
@@ -38,31 +48,45 @@ const footerLinks: {
 export default function Footer() {
   return (
     <footer className="bg-stone-900 text-stone-300">
-      {/* Top Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">中</span>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-900 to-blue-950 flex items-center justify-center">
+                <span className="text-white font-black text-sm">出</span>
               </div>
               <div>
-                <div className="text-white font-bold">中日经贸通</div>
-                <div className="text-[10px] text-stone-500">China Japan Trade Platform</div>
+                <div className="text-white font-black text-base leading-none">出海通</div>
+                <div className="text-[10px] text-stone-500 leading-none mt-0.5">AsiaBridge</div>
               </div>
             </Link>
             <p className="text-sm text-stone-400 leading-relaxed mb-6 max-w-sm">
-              中日经贸信息聚合平台，为您提供实时经贸资讯、精准贸易数据、高效商机匹配，
-              助您把握中日贸易新机遇。
+              帮助中国企业找到东南亚、东亚优质海外客户、代理商、渠道商与合作伙伴。
+              汇聚13国真实商机，解决出海信息不对称的核心痛点。
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-2">
               <a
-                href="mailto:contact@china-japan-trade.com"
-                className="text-xs text-stone-500 hover:text-stone-300 transition-colors"
+                href="mailto:customer@zxqconsulting.com"
+                className="text-sm text-blue-400 hover:text-white transition-colors flex items-center gap-2"
               >
-                contact@china-japan-trade.com
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                customer@zxqconsulting.com
               </a>
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                <span className="text-sm text-blue-400">联系人：张先生 13764872538</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span className="text-sm text-blue-400">微信公众号/视频号：<strong className="text-white font-semibold">张小强出海</strong></span>
+              </div>
             </div>
           </div>
 
@@ -103,14 +127,13 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Bottom Bar */}
       <div className="border-t border-stone-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-stone-500">
-            &copy; {new Date().getFullYear()} 中日经贸通. All rights reserved.
+            &copy; {new Date().getFullYear()} 出海通 AsiaBridge. All rights reserved.
           </p>
           <p className="text-xs text-stone-600">
-            数据来源均为公开信息，仅供参考，不构成投资建议。
+            合规运营 · 仅做商机对接，不涉及新闻内容 · 数据来自公开渠道
           </p>
         </div>
       </div>
