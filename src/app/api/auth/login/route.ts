@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await findUserByEmail(email);
+    console.log('[login] email:', email, '| user found:', !!user, '| role:', user?.role, '| status:', user?.status);
+
     if (!user) {
       return NextResponse.json({ error: '邮箱或密码错误' }, { status: 401 });
     }
@@ -26,6 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const isValid = verifyPassword(password, user.passwordHash);
+    console.log('[login] password valid:', isValid, '| hash prefix:', user.passwordHash?.slice(0, 10));
     if (!isValid) {
       return NextResponse.json({ error: '邮箱或密码错误' }, { status: 401 });
     }

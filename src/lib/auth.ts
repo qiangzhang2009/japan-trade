@@ -196,8 +196,10 @@ export async function createUser(data: {
 export async function findUserByEmail(email: string): Promise<AuthUser | null> {
   // Default admin always available (supports both prod and dev)
   if (ENV_ADMIN_EMAIL && email.toLowerCase() === ENV_ADMIN_EMAIL.toLowerCase()) {
+    console.log('[findUserByEmail] matched hardcoded admin, hasOverride:', !!ENV_ADMIN_PASSWORD, '| hash:', buildEnvAdminUser(ENV_ADMIN_PASSWORD).passwordHash.slice(0, 10));
     return buildEnvAdminUser(ENV_ADMIN_PASSWORD);
   }
+  console.log('[findUserByEmail] checking DB for:', email);
   const db = await readDB();
   return db.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
 }
