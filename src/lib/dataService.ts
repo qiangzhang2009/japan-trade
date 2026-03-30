@@ -1,10 +1,7 @@
-import { NewsArticle, TradeData, BusinessOpportunity } from '@/types';
-import { mockNews, mockOpportunities, mockTradeData } from '@/lib/mockData';
+import { BusinessOpportunity, Country } from '@/types';
+import { mockOpportunities } from '@/lib/mockData';
 import fs from 'fs';
 import path from 'path';
-
-// 在服务端优先从文件系统读取 JSON（构建时有效）
-// 在客户端/无法读取文件系统时使用 fetch
 
 function getDataFilePath(filename: string): string {
   return path.join(process.cwd(), 'public', 'data', filename);
@@ -18,7 +15,7 @@ function readJSONFile<T>(filename: string): T | null {
       return JSON.parse(content) as T;
     }
   } catch (e) {
-    // 静默失败，返回 null
+    // silent
   }
   return null;
 }
@@ -31,30 +28,22 @@ async function fetchJSON<T>(url: string, options?: { revalidate?: number }): Pro
   return res.json() as Promise<T>;
 }
 
-// ============== 新闻 ==============
+// ============== 国家数据 ==============
 
-export async function getNews(): Promise<NewsArticle[]> {
-  const serverData = readJSONFile<NewsArticle[]>('news.json');
+export async function getCountries(): Promise<Country[]> {
+  const serverData = readJSONFile<Country[]>('countries.json');
   if (serverData && serverData.length > 0) return serverData;
-  return mockNews; // 降级到模拟数据
+  return [];
 }
 
-export async function getNewsById(id: string): Promise<NewsArticle | null> {
-  const all = await getNews();
-  return all.find((n) => n.id === id) || null;
+export async function getCountryById(id: string): Promise<Country | null> {
+  const all = await getCountries();
+  return all.find((c) => c.id === id) || null;
 }
 
-export async function getFeaturedNews(): Promise<NewsArticle[]> {
-  const all = await getNews();
-  return all.filter((n) => n.isFeatured).slice(0, 2);
-}
-
-// ============== 贸易数据 ==============
-
-export async function getTradeData(): Promise<TradeData[]> {
-  const serverData = readJSONFile<TradeData[]>('trade-data.json');
-  if (serverData && serverData.length > 0) return serverData;
-  return mockTradeData;
+export async function getCountriesByTier(tier: 1 | 2 | 3): Promise<Country[]> {
+  const all = await getCountries();
+  return all.filter((c) => c.tier === tier);
 }
 
 // ============== 商机 ==============
@@ -75,23 +64,25 @@ export async function getPremiumOpportunities(): Promise<BusinessOpportunity[]> 
   return all.filter((o) => o.isPremium && o.status === 'active');
 }
 
+export async function getOpportunitiesByCountry(countryId: string): Promise<BusinessOpportunity[]> {
+  const all = await getOpportunities();
+  return all.filter((o) => o.country === countryId && o.status === 'active');
+}
+
 // ============== 站点统计 ==============
 
 export async function getSiteStats() {
-  const [news, opportunities, tradeData] = await Promise.all([
-    getNews(),
+  const [countries, opportunities] = await Promise.all([
+    getCountries(),
     getOpportunities(),
-    getTradeData(),
   ]);
 
-  const totalTradeValue = tradeData.reduce(
-    (sum, item) => sum + item.cnExport + item.jpExport, 0
-  );
+  const activeCountries = new Set(opportunities.map((o) => o.country));
 
   return {
-    newsCount: news.length,
+    activeCountriesCount: activeCountries.size,
+    totalCountries: countries.length,
     opportunitiesCount: opportunities.filter((o) => o.status === 'active').length,
-    totalTradeValue,
     lastUpdated: new Date().toISOString(),
   };
 }

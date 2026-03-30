@@ -33,8 +33,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
+        sans: ['var(--font-inter)', 'var(--font-noto-sans-sc)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-noto-sans-sc)', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
         mono: ['Menlo', 'monospace'],
       },
       animation: {

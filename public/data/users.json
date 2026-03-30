@@ -1,0 +1,26 @@
+{
+  "users": [
+    {
+      "id": "syXxUmJzpERiI68F",
+      "email": "admin@zxqconsulting.com",
+      "passwordHash": "$2b$12$FT0oJa3uA1Y2I/yRtBobHeWGNWrAt6F6Om0YM715RuYfR1HK6yuL2",
+      "companyName": "ZXQ Consulting",
+      "contactName": "张小强",
+      "phone": "",
+      "country": "",
+      "industry": "",
+      "role": "admin",
+      "status": "active",
+      "createdAt": "2026-03-29T13:37:39.432Z",
+      "updatedAt": "2026-03-29T13:37:39.432Z",
+      "lastLogin": "2026-03-29T13:37:39.432Z",
+      "subscription": {
+        "planId": "admin",
+        "status": "active",
+        "startDate": "2026-03-29T13:37:39.432Z",
+        "endDate": "2026-03-29T13:37:39.432Z"
+      }
+    }
+  ],
+  "adminInitialSetup": true
+}

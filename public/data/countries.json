@@ -1,0 +1,212 @@
+[
+  {
+    "id": "japan",
+    "nameZh": "日本",
+    "nameEn": "Japan",
+    "flag": "🇯🇵",
+    "tier": 1,
+    "gdp": "4.23万亿美元",
+    "population": "1.25亿",
+    "mainIndustries": ["汽车制造", "电子电器", "精密机械", "化工", "医疗健康"],
+    "summary": "亚洲最大发达市场，消费力强，品牌溢价高，对品质要求严苛",
+    "summaryEn": "Asia's largest developed market with strong purchasing power and high brand premium",
+    "regions": [
+      { "id": "jp-tokyo", "nameZh": "东京首都圈", "nameEn": "Greater Tokyo", "countryId": "japan", "description": "日本政治经济核心，聚集大量外资企业与跨国采购中心" },
+      { "id": "jp-osaka", "nameZh": "大阪关西圈", "nameEn": "Greater Osaka", "countryId": "japan", "description": "日本商业贸易中心，商贸氛围浓厚，中小企业密集" },
+      { "id": "jp-nagoya", "nameZh": "爱知名古屋圈", "nameEn": "Greater Nagoya", "countryId": "japan", "description": "日本制造业心脏，丰田及汽车零配件产业聚集地" }
+    ]
+  },
+  {
+    "id": "south-korea",
+    "nameZh": "韩国",
+    "nameEn": "South Korea",
+    "flag": "🇰🇷",
+    "tier": 1,
+    "gdp": "1.71万亿美元",
+    "population": "5180万",
+    "mainIndustries": ["半导体", "电子通讯", "汽车", "造船", "化妆品"],
+    "summary": "科技强国，数字化程度高，对中国制造有强劲进口需求",
+    "summaryEn": "Tech powerhouse with high digital adoption and strong import demand for Chinese manufacturing",
+    "regions": [
+      { "id": "kr-seoul", "nameZh": "首尔首都圈", "nameEn": "Greater Seoul", "countryId": "south-korea", "description": "韩国经济核心，占全国GDP约50%，集中大量采购总部" },
+      { "id": "kr-busan", "nameZh": "釜山岭南圈", "nameEn": "Busan / Yeongnam", "countryId": "south-korea", "description": "韩国最大港口城市，对华贸易门户，物流贸易活跃" }
+    ]
+  },
+  {
+    "id": "singapore",
+    "nameZh": "新加坡",
+    "nameEn": "Singapore",
+    "flag": "🇸🇬",
+    "tier": 1,
+    "gdp": "5010亿美元",
+    "population": "600万",
+    "mainIndustries": ["金融", "石化", "电子制造", "物流", "科技"],
+    "summary": "东南亚总部经济核心，辐射整个东盟，营商环境世界一流",
+    "summaryEn": "Southeast Asia's headquarters hub with world-class business environment",
+    "regions": [
+      { "id": "sg-central", "nameZh": "中城区", "nameEn": "Central Area", "countryId": "singapore", "description": "金融核心区，跨国公司亚太总部集中地" },
+      { "id": "sg-west", "nameZh": "西部工业区", "nameEn": "Western Zone", "countryId": "singapore", "description": "裕廊工业区，石化与电子制造基地" }
+    ]
+  },
+  {
+    "id": "vietnam",
+    "nameZh": "越南",
+    "nameEn": "Vietnam",
+    "flag": "🇻🇳",
+    "tier": 1,
+    "gdp": "4080亿美元",
+    "population": "9800万",
+    "mainIndustries": ["纺织服装", "电子组装", "家具制造", "农产品加工", "钢铁"],
+    "summary": "制造业高速崛起，成本优势显著，承接大量中国产业转移",
+    "summaryEn": "Fast-rising manufacturing hub with significant cost advantages and active China-to-Vietnam industrial shift",
+    "regions": [
+      { "id": "vn-hanoi", "nameZh": "河内-北宁工业圈", "nameEn": "Hanoi / Bac Ninh", "countryId": "vietnam", "description": "越南北部制造业中心，三星、LG等韩企聚集" },
+      { "id": "vn-hcmc", "nameZh": "胡志明市南越经济圈", "nameEn": "Ho Chi Minh City", "countryId": "vietnam", "description": "越南经济火车头，消费市场活跃，服务业发达" }
+    ]
+  },
+  {
+    "id": "indonesia",
+    "nameZh": "印尼",
+    "nameEn": "Indonesia",
+    "flag": "🇮🇩",
+    "tier": 2,
+    "gdp": "1.42万亿美元",
+    "population": "2.78亿",
+    "mainIndustries": ["煤炭棕榈油", "钢铁化工", "纺织", "电子产品", "汽车"],
+    "summary": "东南亚最大市场，人口红利巨大，消费需求快速增长",
+    "summaryEn": "Southeast Asia's largest market with massive demographic dividend and fast-growing consumer demand",
+    "regions": [
+      { "id": "id-jakarta", "nameZh": "雅加达大区", "nameEn": "Greater Jakarta", "countryId": "indonesia", "description": "东南亚最大城市，首都经济圈，消费力最强" },
+      { "id": "id-java", "nameZh": "爪哇其他地区", "nameEn": "Java Island", "countryId": "indonesia", "description": "万隆工业带、泗水工商重镇，人口密集" }
+    ]
+  },
+  {
+    "id": "malaysia",
+    "nameZh": "马来西亚",
+    "nameEn": "Malaysia",
+    "flag": "🇲🇾",
+    "tier": 2,
+    "gdp": "4070亿美元",
+    "population": "3300万",
+    "mainIndustries": ["半导体封测", "石油化工", "棕榈油", "汽车", "房地产"],
+    "summary": "东南亚中等发达市场，清真产业和科技制造优势突出",
+    "summaryEn": "Upper-middle-income market with strengths in halal industry and tech manufacturing",
+    "regions": [
+      { "id": "my-kl", "nameZh": "吉隆坡雪兰莪", "nameEn": "Kuala Lumpur / Selangor", "countryId": "malaysia", "description": "马来西亚经济核心，半导体与电子产业聚集带" },
+      { "id": "my-penang", "nameZh": "槟城", "nameEn": "Penang", "countryId": "malaysia", "description": "东方硅谷，电子制造与科技产业重镇" },
+      { "id": "my-johor", "nameZh": "柔佛", "nameEn": "Johor", "countryId": "malaysia", "description": "新山依斯干达经济特区，对接新加坡产业外溢" }
+    ]
+  },
+  {
+    "id": "thailand",
+    "nameZh": "泰国",
+    "nameEn": "Thailand",
+    "flag": "🇹🇭",
+    "tier": 2,
+    "gdp": "4950亿美元",
+    "population": "7000万",
+    "mainIndustries": ["汽车制造", "电子电器", "橡胶化工", "食品加工", "旅游"],
+    "summary": "东南亚汽车与电子制造重镇，东部经济走廊吸引大量外资",
+    "summaryEn": "ASEAN's auto and electronics manufacturing hub with strong EEC investment incentives",
+    "regions": [
+      { "id": "th-bangkok", "nameZh": "曼谷大都会区", "nameEn": "Greater Bangkok", "countryId": "thailand", "description": "首都经济圈，泰国商业贸易中心" },
+      { "id": "th-eea", "nameZh": "东部经济走廊", "nameEn": "Eastern Economic Corridor", "countryId": "thailand", "description": "罗勇/春武里/北柳，高科技制造与新能源汽车聚集带" }
+    ]
+  },
+  {
+    "id": "philippines",
+    "nameZh": "菲律宾",
+    "nameEn": "Philippines",
+    "flag": "🇵🇭",
+    "tier": 2,
+    "gdp": "4040亿美元",
+    "population": "1.13亿",
+    "mainIndustries": ["BPO服务", "电子制造", "农产品", "建筑", "矿业"],
+    "summary": "英语市场优势明显，BPO经济活跃，劳动力资源丰富",
+    "summaryEn": "English-speaking market with strong BPO economy and abundant young workforce",
+    "regions": [
+      { "id": "ph-manila", "nameZh": "马尼拉都会区", "nameEn": "Metro Manila", "countryId": "philippines", "description": "菲律宾经济心脏，大型商业采购与BPO中心" },
+      { "id": "ph-cebu", "nameZh": "宿务", "nameEn": "Cebu", "countryId": "philippines", "description": "菲律宾第二大城市，菲中贸易与旅游重要节点" }
+    ]
+  },
+  {
+    "id": "laos",
+    "nameZh": "老挝",
+    "nameEn": "Laos",
+    "flag": "🇱🇦",
+    "tier": 3,
+    "gdp": "158亿美元",
+    "population": "740万",
+    "mainIndustries": ["水电", "矿产", "农林产品", "旅游", "贸易"],
+    "summary": "中国-东盟陆路通道，中老铁路沿线经济带快速崛起",
+    "summaryEn": "China-ASEAN land bridge with fast-rising China-Laos Railway economic corridor",
+    "regions": [
+      { "id": "la-vientiane", "nameZh": "万象经济特区", "nameEn": "Vientiane", "countryId": "laos", "description": "首都经济特区，中老合作重点项目集中" },
+      { "id": "la-boten", "nameZh": "磨丁边境经济走廊", "nameEn": "Boten Economic Corridor", "countryId": "laos", "description": "中老边境，承接中国产业转移的先行区" }
+    ]
+  },
+  {
+    "id": "cambodia",
+    "nameZh": "柬埔寨",
+    "nameEn": "Cambodia",
+    "flag": "🇰🇭",
+    "tier": 3,
+    "gdp": "320亿美元",
+    "population": "1700万",
+    "mainIndustries": ["纺织服装", "农业加工", "建筑业", "旅游", "房地产"],
+    "summary": "东南亚增长最快的经济体之一，美元化市场，对华友好",
+    "summaryEn": "One of Southeast Asia's fastest-growing economies with dollarized market and China-friendly policies",
+    "regions": [
+      { "id": "kh-phnom-penh", "nameZh": "金边", "nameEn": "Phnom Penh", "countryId": "cambodia", "description": "首都经济中心，高速城镇化进程" },
+      { "id": "kh-sihanoukville", "nameZh": "西哈努克港", "nameEn": "Sihanoukville", "countryId": "cambodia", "description": "海滨特区港口，中柬产能合作重点项目" }
+    ]
+  },
+  {
+    "id": "myanmar",
+    "nameZh": "缅甸",
+    "nameEn": "Myanmar",
+    "flag": "🇲🇲",
+    "tier": 3,
+    "gdp": "730亿美元",
+    "population": "5400万",
+    "mainIndustries": ["农产品", "矿产", "成衣制造", "贸易", "天然气"],
+    "summary": "东南亚最后一块新兴市场，自然资源丰富，开发潜力巨大",
+    "summaryEn": "Southeast Asia's last frontier market with rich natural resources and vast untapped potential",
+    "regions": [
+      { "id": "mm-yangon", "nameZh": "仰光", "nameEn": "Yangon", "countryId": "myanmar", "description": "缅甸经济中心，外资进入的主要门户" },
+      { "id": "mm-mandalay", "nameZh": "曼德勒", "nameEn": "Mandalay", "countryId": "myanmar", "description": "缅甸第二大城市，北部贸易通道" }
+    ]
+  },
+  {
+    "id": "india",
+    "nameZh": "印度",
+    "nameEn": "India",
+    "flag": "🇮🇳",
+    "tier": 3,
+    "gdp": "3.73万亿美元",
+    "population": "14.4亿",
+    "mainIndustries": ["IT服务", "医药", "汽车零配件", "化工", "纺织"],
+    "summary": "全球增长最快的大型经济体，人口第一，市场规模无与伦比",
+    "summaryEn": "World's fastest-growing large economy with unmatched market scale and demographic dividend",
+    "regions": [
+      { "id": "in-gujarat", "nameZh": "古吉拉特", "nameEn": "Gujarat", "countryId": "india", "description": "印度制造业中心，石化与纺织重镇，莫迪故乡" },
+      { "id": "in-maharashtra", "nameZh": "马哈拉施特拉", "nameEn": "Maharashtra", "countryId": "india", "description": "孟买所在邦，印度金融与商业核心" }
+    ]
+  },
+  {
+    "id": "pakistan",
+    "nameZh": "巴基斯坦",
+    "nameEn": "Pakistan",
+    "flag": "🇵🇰",
+    "tier": 3,
+    "gdp": "3760亿美元",
+    "population": "2.4亿",
+    "mainIndustries": ["纺织服装", "农业", "化学品", "钢铁", "工程承包"],
+    "summary": "南亚第二大市场，中巴经济走廊带来大量基础设施与贸易机会",
+    "summaryEn": "South Asia's second-largest market with massive opportunities from China-Pakistan Economic Corridor",
+    "regions": [
+      { "id": "pk-karachi", "nameZh": "卡拉奇", "nameEn": "Karachi", "countryId": "pakistan", "description": "巴基斯坦最大城市，经济中心，主要港口" },
+      { "id": "pk-lahore", "nameZh": "拉合尔", "nameEn": "Lahore", "countryId": "pakistan", "description": "旁遮普省首府，巴基斯坦第二大城市" }
+    ]
+  }
+]
