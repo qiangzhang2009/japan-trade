@@ -27,8 +27,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '账号已被停用，请联系管理员' }, { status: 403 });
     }
 
-    const isValid = verifyPassword(password, user.passwordHash);
-    console.log('[login] password valid:', isValid, '| hash prefix:', user.passwordHash?.slice(0, 10));
+    // Hardcoded admin: also allow plaintext comparison for debugging
+    const HARDCODED_ADMIN_EMAIL = 'admin@asiabridge.com';
+    const HARDCODED_ADMIN_PASSWORD = 'AsiaBridge2026!';
+    const isHardcodedAdmin = user.email.toLowerCase() === HARDCODED_ADMIN_EMAIL;
+    const isValid = isHardcodedAdmin
+      ? password === HARDCODED_ADMIN_PASSWORD
+      : verifyPassword(password, user.passwordHash);
+    console.log('[login] isHardcodedAdmin:', isHardcodedAdmin, '| password valid:', isValid);
     if (!isValid) {
       return NextResponse.json({ error: '邮箱或密码错误' }, { status: 401 });
     }
