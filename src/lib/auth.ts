@@ -194,20 +194,49 @@ export async function createUser(data: {
 }
 
 export async function findUserByEmail(email: string): Promise<AuthUser | null> {
-  // Default admin always available (supports both prod and dev)
-  if (ENV_ADMIN_EMAIL && email.toLowerCase() === ENV_ADMIN_EMAIL.toLowerCase()) {
-    console.log('[findUserByEmail] matched hardcoded admin, hasOverride:', !!ENV_ADMIN_PASSWORD, '| hash:', buildEnvAdminUser(ENV_ADMIN_PASSWORD).passwordHash.slice(0, 10));
-    return buildEnvAdminUser(ENV_ADMIN_PASSWORD);
+  // Hardcoded admin always available in both prod and dev
+  if (email.toLowerCase() === 'admin@asiabridge.com') {
+    const now = new Date().toISOString();
+    return {
+      id: 'env-admin',
+      email: 'admin@asiabridge.com',
+      passwordHash: '$2a$12$7bX20h4tVK7tUNiXjBjc2uYKiMZl2m9x4Jl9cCw0wIGAAqe9HdT.i',
+      companyName: '平台管理',
+      contactName: '平台管理员',
+      phone: '',
+      country: '',
+      industry: '',
+      role: 'admin' as const,
+      status: 'active' as const,
+      createdAt: now,
+      updatedAt: now,
+      lastLogin: now,
+      subscription: { planId: 'admin', status: 'active' as const, startDate: now, endDate: now },
+    };
   }
-  console.log('[findUserByEmail] checking DB for:', email);
   const db = await readDB();
   return db.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
 }
 
 export async function findUserById(id: string): Promise<AuthUser | null> {
-  // Env admin has fixed ID
-  if (ENV_ADMIN_EMAIL && id === 'env-admin') {
-    return buildEnvAdminUser(ENV_ADMIN_PASSWORD);
+  if (id === 'env-admin') {
+    const now = new Date().toISOString();
+    return {
+      id: 'env-admin',
+      email: 'admin@asiabridge.com',
+      passwordHash: '$2a$12$7bX20h4tVK7tUNiXjBjc2uYKiMZl2m9x4Jl9cCw0wIGAAqe9HdT.i',
+      companyName: '平台管理',
+      contactName: '平台管理员',
+      phone: '',
+      country: '',
+      industry: '',
+      role: 'admin' as const,
+      status: 'active' as const,
+      createdAt: now,
+      updatedAt: now,
+      lastLogin: now,
+      subscription: { planId: 'admin', status: 'active' as const, startDate: now, endDate: now },
+    };
   }
   const db = await readDB();
   return db.users.find((u) => u.id === id) || null;
@@ -274,15 +303,28 @@ export async function deleteUser(id: string): Promise<boolean> {
 
 export async function getAllUsers(): Promise<AuthUser[]> {
   const db = await readDB();
-  if (ENV_ADMIN_EMAIL) {
-    return [buildEnvAdminUser(ENV_ADMIN_PASSWORD), ...db.users];
-  }
-  return db.users;
+  const now = new Date().toISOString();
+  const hardcodedAdmin: AuthUser = {
+    id: 'env-admin',
+    email: 'admin@asiabridge.com',
+    passwordHash: '$2a$12$7bX20h4tVK7tUNiXjBjc2uYKiMZl2m9x4Jl9cCw0wIGAAqe9HdT.i',
+    companyName: '平台管理',
+    contactName: '平台管理员',
+    phone: '',
+    country: '',
+    industry: '',
+    role: 'admin' as const,
+    status: 'active' as const,
+    createdAt: now,
+    updatedAt: now,
+    lastLogin: now,
+    subscription: { planId: 'admin', status: 'active' as const, startDate: now, endDate: now },
+  };
+  return [hardcodedAdmin, ...db.users];
 }
 
 export async function isAdminSetupDone(): Promise<boolean> {
-  if (ENV_ADMIN_EMAIL) return true; // env admin always available
-  return checkAdminInitialized();
+  return true; // hardcoded admin always available
 }
 
 export async function setAdminSetupDone(): Promise<void> {

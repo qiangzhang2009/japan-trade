@@ -28,11 +28,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Hardcoded admin: also allow plaintext comparison for debugging
-    const HARDCODED_ADMIN_EMAIL = 'admin@asiabridge.com';
-    const HARDCODED_ADMIN_PASSWORD = 'AsiaBridge2026!';
-    const isHardcodedAdmin = user.email.toLowerCase() === HARDCODED_ADMIN_EMAIL;
+    const isHardcodedAdmin = user.email.toLowerCase() === 'admin@asiabridge.com';
     const isValid = isHardcodedAdmin
-      ? password === HARDCODED_ADMIN_PASSWORD
+      ? password === 'AsiaBridge2026!'
       : verifyPassword(password, user.passwordHash);
     console.log('[login] isHardcodedAdmin:', isHardcodedAdmin, '| password valid:', isValid);
     if (!isValid) {
