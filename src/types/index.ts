@@ -1,65 +1,63 @@
-export interface NewsArticle {
+export type UserRole = 'viewer' | 'member' | 'premium' | 'admin';
+export type UserStatus = 'active' | 'suspended' | 'pending';
+
+export interface Region {
   id: string;
-  title: string;       // 日语/英语原始标题
-  titleCn: string;    // 中文翻译标题
-  summary: string;     // 日语/英语原始摘要
-  summaryCn: string;   // 中文翻译摘要
-  source: string;
-  sourceUrl: string;
-  category: 'policy' | 'trade' | 'industry' | 'market' | 'event';
-  country: 'cn' | 'jp' | 'bilateral';
-  tags: string[];
-  publishedAt: string;
-  imageUrl?: string;
-  isFeatured?: boolean;
+  nameZh: string;
+  nameEn: string;
+  countryId: string;
+  description?: string;
 }
 
-export interface TradeData {
+export interface Country {
   id: string;
-  hsCode: string;
-  productName: string;
-  productNameJp: string;
-  cnExport: number;
-  cnImport: number;
-  jpExport: number;
-  jpImport: number;
-  trend: 'up' | 'down' | 'stable';
-  trendPercent: number;
-  month: string;
-  year: number;
+  nameZh: string;
+  nameEn: string;
+  flag: string;
+  tier: 1 | 2 | 3;
+  gdp?: string;
+  population?: string;
+  mainIndustries: string[];
+  summary: string;
+  summaryEn: string;
+  regions: Region[];
 }
 
 export interface BusinessOpportunity {
   id: string;
   title: string;
-  titleJp: string;
+  titleEn?: string;
   description: string;
-  descriptionJp: string;
+  descriptionEn?: string;
   type: 'supply' | 'demand' | 'investment' | 'cooperation';
-  country: 'cn' | 'jp' | 'bilateral';
+  country: string;
+  region?: string;
   industry: string;
   amount?: string;
   currency?: 'CNY' | 'JPY' | 'USD';
   companyName: string;
-  companyNameJp?: string;
+  companyNameEn?: string;
   contactEmail: string;
   publishedAt: string;
   expiresAt: string;
   status: 'active' | 'pending' | 'closed';
   isPremium: boolean;
-  region?: string;
+  regionLabel?: string;
+  cooperationType?: 'agency' | 'distribution' | 'oem' | 'joint-venture' | 'technology';
+  dataSource?: string;
 }
 
 export interface PricingPlan {
   id: string;
   name: string;
-  nameJp: string;
+  nameEn: string;
   tagline: string;
-  taglineJp: string;
+  taglineEn: string;
   price: number;
   priceUnit: 'month' | 'year' | 'once';
-  currency: 'CNY' | 'JPY' | 'USD';
+  currency: 'CNY' | 'USD';
   features: string[];
+  featuresEn: string[];
   highlighted?: boolean;
   badge?: string;
   cta: string;
@@ -81,12 +79,20 @@ export interface User {
   id: string;
   email: string;
   companyName: string;
-  companyNameJp?: string;
-  country: 'cn' | 'jp' | 'other';
+  contactName: string;
+  phone: string;
+  country: string;
   industry: string;
-  role: 'viewer' | 'member' | 'premium';
+  role: UserRole;
+  status: UserStatus;
   createdAt: string;
   lastLogin: string;
+  subscription: {
+    planId: string;
+    status: 'active' | 'cancelled' | 'expired' | 'none';
+    startDate: string;
+    endDate: string;
+  };
 }
 
 export interface ChatMessage {
@@ -98,16 +104,11 @@ export interface ChatMessage {
 
 export interface SiteConfig {
   siteName: string;
-  siteNameJp: string;
+  siteNameEn: string;
   tagline: string;
-  taglineJp: string;
+  taglineEn: string;
   description: string;
-  descriptionJp: string;
+  descriptionEn: string;
   domain: string;
   email: string;
-  socialLinks: {
-    twitter?: string;
-    linkedin?: string;
-    wechat?: string;
-  };
 }
