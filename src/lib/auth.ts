@@ -6,10 +6,15 @@ import type { User } from '@/types';
 const IS_PROD = process.env.VERCEL === '1';
 const HAS_REDIS = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
+// ─── Default hardcoded admin (used when env vars are not set) ───────────────
+const DEFAULT_ADMIN_EMAIL = 'admin@asiabridge.com';
+const DEFAULT_ADMIN_PASSWORD = 'AsiaBridge2026!';
+const DEFAULT_ADMIN_NAME = '平台管理员';
+
 // ─── Env-var admin (Vercel-compatible, no DB writes needed) ─────────────────
-const ENV_ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-const ENV_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const ENV_ADMIN_NAME = process.env.ADMIN_NAME || '管理员';
+const ENV_ADMIN_EMAIL = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
+const ENV_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
+const ENV_ADMIN_NAME = process.env.ADMIN_NAME || DEFAULT_ADMIN_NAME;
 
 export type { UserRole, UserStatus };
 
@@ -189,8 +194,8 @@ export async function createUser(data: {
 }
 
 export async function findUserByEmail(email: string): Promise<AuthUser | null> {
-  // Env-var admin always exists (no DB write needed)
-  if (IS_PROD && ENV_ADMIN_EMAIL && email.toLowerCase() === ENV_ADMIN_EMAIL.toLowerCase()) {
+  // Default admin always available (supports both prod and dev)
+  if (ENV_ADMIN_EMAIL && email.toLowerCase() === ENV_ADMIN_EMAIL.toLowerCase()) {
     return buildEnvAdminUser();
   }
   const db = await readDB();
@@ -199,7 +204,7 @@ export async function findUserByEmail(email: string): Promise<AuthUser | null> {
 
 export async function findUserById(id: string): Promise<AuthUser | null> {
   // Env admin has fixed ID
-  if (IS_PROD && ENV_ADMIN_EMAIL && id === 'env-admin') {
+  if (ENV_ADMIN_EMAIL && id === 'env-admin') {
     return buildEnvAdminUser();
   }
   const db = await readDB();
@@ -264,14 +269,14 @@ export async function deleteUser(id: string): Promise<boolean> {
 
 export async function getAllUsers(): Promise<AuthUser[]> {
   const db = await readDB();
-  if (IS_PROD && ENV_ADMIN_EMAIL) {
+  if (ENV_ADMIN_EMAIL) {
     return [buildEnvAdminUser(), ...db.users];
   }
   return db.users;
 }
 
 export async function isAdminSetupDone(): Promise<boolean> {
-  if (IS_PROD && ENV_ADMIN_EMAIL) return true; // env admin always available
+  if (ENV_ADMIN_EMAIL) return true; // env admin always available
   return checkAdminInitialized();
 }
 
