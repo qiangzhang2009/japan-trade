@@ -1,23 +1,20 @@
 import { BusinessOpportunity, Country } from '@/types';
-import { mockOpportunities } from '@/lib/mockData';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 
 function getDataFilePath(filename: string): string {
   return path.join(process.cwd(), 'public', 'data', filename);
 }
 
-function readJSONFile<T>(filename: string): T | null {
+async function readJSONFile<T>(filename: string): Promise<T[]> {
   try {
     const filePath = getDataFilePath(filename);
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf8');
-      return JSON.parse(content) as T;
-    }
-  } catch (e) {
-    // silent
+    const content = await fs.readFile(filePath, 'utf8');
+    const parsed = JSON.parse(content);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
-  return null;
 }
 
 async function fetchJSON<T>(url: string, options?: { revalidate?: number }): Promise<T> {
@@ -28,12 +25,32 @@ async function fetchJSON<T>(url: string, options?: { revalidate?: number }): Pro
   return res.json() as Promise<T>;
 }
 
-// ============== 国家数据 ==============
+// ============== Site Stats (centralized, avoid duplication) ==============
+
+export async function getSiteStats() {
+  const [countries, opportunities] = await Promise.all([
+    getCountries(),
+    getOpportunities(),
+  ]);
+
+  const activeCountries = new Set(
+    opportunities
+      .filter((o) => o.status === 'active')
+      .map((o) => o.country)
+  );
+
+  return {
+    activeCountriesCount: activeCountries.size,
+    totalCountries: countries.length,
+    opportunitiesCount: opportunities.filter((o) => o.status === 'active').length,
+    lastUpdated: new Date().toISOString(),
+  };
+}
+
+// ============== Country Data ==============
 
 export async function getCountries(): Promise<Country[]> {
-  const serverData = readJSONFile<Country[]>('countries.json');
-  if (serverData && serverData.length > 0) return serverData;
-  return [];
+  return readJSONFile<Country>('countries.json');
 }
 
 export async function getCountryById(id: string): Promise<Country | null> {
@@ -46,12 +63,10 @@ export async function getCountriesByTier(tier: 1 | 2 | 3): Promise<Country[]> {
   return all.filter((c) => c.tier === tier);
 }
 
-// ============== 商机 ==============
+// ============== Opportunities ==============
 
 export async function getOpportunities(): Promise<BusinessOpportunity[]> {
-  const serverData = readJSONFile<BusinessOpportunity[]>('opportunities.json');
-  if (serverData && serverData.length > 0) return serverData;
-  return mockOpportunities;
+  return readJSONFile<BusinessOpportunity>('opportunities.json');
 }
 
 export async function getOpportunityById(id: string): Promise<BusinessOpportunity | null> {
@@ -67,22 +82,4 @@ export async function getPremiumOpportunities(): Promise<BusinessOpportunity[]> 
 export async function getOpportunitiesByCountry(countryId: string): Promise<BusinessOpportunity[]> {
   const all = await getOpportunities();
   return all.filter((o) => o.country === countryId && o.status === 'active');
-}
-
-// ============== 站点统计 ==============
-
-export async function getSiteStats() {
-  const [countries, opportunities] = await Promise.all([
-    getCountries(),
-    getOpportunities(),
-  ]);
-
-  const activeCountries = new Set(opportunities.map((o) => o.country));
-
-  return {
-    activeCountriesCount: activeCountries.size,
-    totalCountries: countries.length,
-    opportunitiesCount: opportunities.filter((o) => o.status === 'active').length,
-    lastUpdated: new Date().toISOString(),
-  };
 }

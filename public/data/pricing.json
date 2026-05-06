@@ -1,0 +1,83 @@
+[
+  {
+    "id": "free",
+    "name": "免费版",
+    "nameEn": "Free",
+    "tagline": "入门首选，开始发现亚洲商机",
+    "taglineEn": "Start discovering Asia business opportunities",
+    "price": 0,
+    "priceUnit": "month",
+    "currency": "CNY",
+    "features": [
+      "浏览全部商机信息",
+      "查看13国市场概览",
+      "收藏感兴趣商机",
+      "接收每周精选商机邮件"
+    ],
+    "featuresEn": [
+      "Browse all opportunities",
+      "View 13 country market overviews",
+      "Save favorite opportunities",
+      "Receive weekly curated emails"
+    ],
+    "cta": "免费开始"
+  },
+  {
+    "id": "pro",
+    "name": "专业版",
+    "nameEn": "Professional",
+    "tagline": "适合有出海计划的贸易从业者和企业决策者",
+    "taglineEn": "For trade professionals and business decision-makers with outbound plans",
+    "price": 299,
+    "priceUnit": "month",
+    "currency": "CNY",
+    "highlighted": true,
+    "badge": "最受欢迎",
+    "features": [
+      "免费版全部功能",
+      "无限联系商机发布方",
+      "优先展示给海外合作伙伴",
+      "解锁全部行业版块报告",
+      "专属出海顾问咨询（每月1次）",
+      "优先发布商机（每月3条）"
+    ],
+    "featuresEn": [
+      "All Free features",
+      "Unlimited contact opportunity issuers",
+      "Priority visibility to overseas partners",
+      "Unlock all industry sector reports",
+      "Dedicated outbound advisor (1x/month)",
+      "Priority opportunity posting (3/month)"
+    ],
+    "cta": "立即升级"
+  },
+  {
+    "id": "enterprise",
+    "name": "企业版",
+    "nameEn": "Enterprise",
+    "tagline": "适合大型制造企业、上市公司和咨询机构",
+    "taglineEn": "For large manufacturers, listed companies, and consulting firms",
+    "price": 999,
+    "priceUnit": "month",
+    "currency": "CNY",
+    "features": [
+      "专业版全部功能",
+      "定制国别市场研究报告",
+      "B2B精准商机匹配服务",
+      "全年不限次出海顾问咨询",
+      "企业品牌专属展示位",
+      "线下出海峰会优先报名",
+      "竞品动态监控预警"
+    ],
+    "featuresEn": [
+      "All Professional features",
+      "Custom country market research reports",
+      "B2B precision opportunity matching",
+      "Unlimited outbound advisor access",
+      "Dedicated brand showcase placement",
+      "Priority access to offline summits",
+      "Competitor dynamics monitoring alerts"
+    ],
+    "cta": "联系我们"
+  }
+]

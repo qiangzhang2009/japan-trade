@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
 import {
@@ -320,7 +320,7 @@ function OpportunityCard({ opp }: { opp: BusinessOpportunity }) {
             </div>
           </div>
 
-          {/* Status row */}
+          {/* Source badge */}
           <div className="mt-3 flex items-center justify-between relative z-10">
             <div className="flex items-center gap-2">
               <span className={cn(
@@ -334,6 +334,16 @@ function OpportunityCard({ opp }: { opp: BusinessOpportunity }) {
                 <span className="w-1.5 h-1.5 rounded-full bg-current" />
                 {opp.status === 'active' ? '招募中' : opp.status === 'pending' ? '待审核' : '已结束'}
               </span>
+              {opp.dataSource && (
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 text-[10px] font-medium rounded-full bg-stone-100 text-stone-400 border border-stone-200">
+                  采集数据
+                </span>
+              )}
+              {!opp.dataSource && (
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 text-[10px] font-medium rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  人工提交
+                </span>
+              )}
 
               {isUrgent && (
                 <span className={cn(
@@ -433,7 +443,7 @@ function StatsBar({ opps, countries }: { opps: BusinessOpportunity[]; countries:
 // ============================================================
 // Empty State
 // ============================================================
-function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+function EmptyState({ hasFilters, onReset }: { hasFilters: boolean; onReset: () => void }) {
   return (
     <div className="text-center py-20 bg-white rounded-2xl border border-stone-200">
       <div className="text-6xl mb-4">🔍</div>
@@ -447,7 +457,7 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
       </p>
       {hasFilters ? (
         <button
-          onClick={() => window.location.reload()}
+          onClick={onReset}
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -508,6 +518,8 @@ export default function OpportunitiesClient({ initialOpps, countries }: Opportun
   const [showPremiumOnly, setShowPremiumOnly] = useState(false);
   const [allOpps] = useState<BusinessOpportunity[]>(initialOpps);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // Read URL params on mount
   useEffect(() => {
@@ -593,6 +605,15 @@ export default function OpportunitiesClient({ initialOpps, countries }: Opportun
   );
 
   const activeCountryData = countries.find(c => c.id === activeCountry);
+
+  const handleResetFilters = useCallback(() => {
+    setSearchQuery('');
+    setActiveCountry('all');
+    setActiveRegion('all');
+    setActiveType('all');
+    setActiveIndustry('全部行业');
+    setShowPremiumOnly(false);
+  }, []);
 
   return (
     <SiteLayout>
@@ -772,14 +793,7 @@ export default function OpportunitiesClient({ initialOpps, countries }: Opportun
 
               {hasActiveFilters && (
                 <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setActiveCountry('all');
-                    setActiveRegion('all');
-                    setActiveType('all');
-                    setActiveIndustry('全部行业');
-                    setShowPremiumOnly(false);
-                  }}
+                  onClick={handleResetFilters}
                   className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -796,7 +810,7 @@ export default function OpportunitiesClient({ initialOpps, countries }: Opportun
                 {filtered.map(opp => <OpportunityCard key={opp.id} opp={opp} />)}
               </div>
             ) : (
-              <EmptyState hasFilters={hasActiveFilters} />
+              <EmptyState hasFilters={hasActiveFilters} onReset={handleResetFilters} />
             )}
 
             {/* CTA Banner */}
@@ -855,6 +869,8 @@ export default function OpportunitiesClient({ initialOpps, countries }: Opportun
 
             <form onSubmit={async (e) => {
               e.preventDefault();
+              setSubmitError('');
+              setSubmitSuccess(false);
               const fd = new FormData(e.currentTarget);
               const data = {
                 title: fd.get('title'),
@@ -877,18 +893,36 @@ export default function OpportunitiesClient({ initialOpps, countries }: Opportun
                 });
                 const result = await res.json();
                 if (result.success) {
-                  alert('商机提交成功！审核通过后将展示。');
-                  setShowSubmitModal(false);
-                  window.location.reload();
+                  setSubmitSuccess(true);
                 } else {
-                  alert('提交失败: ' + result.error);
+                  setSubmitError(result.error || '提交失败，请稍后重试');
                 }
               } catch {
-                alert('提交失败，请稍后重试');
+                setSubmitError('网络错误，请稍后重试');
               }
             }} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">商机标题 *</label>
+              {submitSuccess ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="text-5xl">✅</div>
+                  <h3 className="text-lg font-bold text-stone-900">商机提交成功！</h3>
+                  <p className="text-sm text-stone-500">审核通过后将在商机广场展示，请耐心等待。</p>
+                  <button
+                    type="button"
+                    onClick={() => { setShowSubmitModal(false); setSubmitSuccess(false); setSubmitError(''); }}
+                    className="mt-4 px-6 py-2.5 text-sm font-bold text-white bg-blue-800 hover:bg-blue-900 rounded-lg transition-colors shadow-md"
+                  >
+                    完成
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {submitError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+                      ⚠️ {submitError}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">商机标题 *</label>
                 <input name="title" required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" placeholder="例如：寻求越南家具代理商合作" />
               </div>
 
@@ -949,33 +983,14 @@ export default function OpportunitiesClient({ initialOpps, countries }: Opportun
                   提交商机
                 </button>
               </div>
+                </>
+              )}
             </form>
           </div>
         </div>
       )}
 
       <ScrollToTop />
-
-      <style jsx global>{`
-        .premium-card-wrap { position: relative; }
-        .premium-card-wrap::before {
-          content: '';
-          position: absolute;
-          inset: -2px;
-          background: linear-gradient(135deg, #fbbf24, #f97316, #fbbf24);
-          border-radius: 1rem;
-          z-index: -1;
-          opacity: 0.5;
-          filter: blur(8px);
-          animation: premium-glow 2s ease-in-out infinite alternate;
-        }
-        @keyframes premium-glow {
-          from { opacity: 0.3; filter: blur(6px); }
-          to { opacity: 0.6; filter: blur(10px); }
-        }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
     </SiteLayout>
   );
 }

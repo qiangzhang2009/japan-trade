@@ -6,15 +6,14 @@ import type { User } from '@/types';
 const IS_PROD = process.env.VERCEL === '1';
 const HAS_REDIS = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
-// ─── Default hardcoded admin (used when env vars are not set) ───────────────
-const DEFAULT_ADMIN_EMAIL = 'admin@asiabridge.com';
-const DEFAULT_ADMIN_PASSWORD_HASH = '$2a$12$7bX20h4tVK7tUNiXjBjc2uYKiMZl2m9x4Jl9cCw0wIGAAqe9HdT.i'; // AsiaBridge2026!
-const DEFAULT_ADMIN_NAME = '平台管理员';
+// ─── Admin configuration from environment ────────────────────────────────────
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@asiabridge.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'AsiaBridge2026!';
+const ADMIN_NAME = process.env.ADMIN_NAME || '平台管理员';
 
-// ─── Env-var admin (Vercel-compatible, no DB writes needed) ─────────────────
-const ENV_ADMIN_EMAIL = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
-const ENV_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD; // optional override
-const ENV_ADMIN_NAME = process.env.ADMIN_NAME || DEFAULT_ADMIN_NAME;
+// Pre-compute hash at module load time (env vars are set at startup)
+const ADMIN_PASSWORD_HASH = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+const ADMIN_ID = 'env-admin';
 
 export type { UserRole, UserStatus };
 
@@ -48,7 +47,35 @@ interface UsersDB {
 const USERS_KEY = 'asiabridge:users';
 const ADMIN_FLAG_KEY = 'asiabridge:admin_initialized';
 
-// ─── Redis Client (lazy init to avoid build-time issues) ───────────────────
+// ─── Admin singleton (always available, never persisted to JSON) ───────────────
+function makeEnvAdmin(now: string): AuthUser {
+  return {
+    id: ADMIN_ID,
+    email: ADMIN_EMAIL.toLowerCase(),
+    passwordHash: ADMIN_PASSWORD_HASH,
+    companyName: '平台管理',
+    contactName: ADMIN_NAME,
+    phone: '',
+    country: '',
+    industry: '',
+    role: 'admin' as const,
+    status: 'active' as const,
+    createdAt: now,
+    updatedAt: now,
+    lastLogin: now,
+    subscription: { planId: 'admin', status: 'active' as const, startDate: now, endDate: now },
+  };
+}
+
+function isEnvAdmin(email: string): boolean {
+  return email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+}
+
+function isEnvAdminId(id: string): boolean {
+  return id === ADMIN_ID;
+}
+
+// ─── Redis Client (lazy init to avoid build-time issues) ─────────────────────
 async function getRedis() {
   if (!HAS_REDIS) return null;
   const { Redis } = await import('@upstash/redis');
@@ -58,12 +85,13 @@ async function getRedis() {
   });
 }
 
-// ─── Local JSON fallback ────────────────────────────────────────────────────
+// ─── Local JSON fallback — stored outside public/ to prevent direct URL access ──
 async function getLocalDB(): Promise<UsersDB> {
   if (!IS_PROD) {
     const fs = await import('fs');
     const path = await import('path');
-    const dataDir = path.join(process.cwd(), 'public', 'data');
+    // Store users.json one level above public/ so it can't be accessed via URL
+    const dataDir = path.join(process.cwd(), 'data');
     const filePath = path.join(dataDir, 'users.json');
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     if (!fs.existsSync(filePath)) {
@@ -80,12 +108,12 @@ async function saveLocalDB(db: UsersDB): Promise<void> {
   if (!IS_PROD) {
     const fs = await import('fs');
     const path = await import('path');
-    const filePath = path.join(process.cwd(), 'public', 'data', 'users.json');
+    const filePath = path.join(process.cwd(), 'data', 'users.json');
     fs.writeFileSync(filePath, JSON.stringify(db, null, 2));
   }
 }
 
-// ─── Redis helpers ──────────────────────────────────────────────────────────
+// ─── Redis helpers ────────────────────────────────────────────────────────────
 async function getRedisDB(): Promise<UsersDB> {
   const redis = await getRedis();
   if (!redis) return getLocalDB();
@@ -100,7 +128,7 @@ async function saveRedisDB(db: UsersDB): Promise<void> {
   await redis.set(USERS_KEY, JSON.stringify(db));
 }
 
-// ─── Unified read/write ────────────────────────────────────────────────────
+// ─── Unified read/write ───────────────────────────────────────────────────────
 async function readDB(): Promise<UsersDB> {
   return getRedisDB();
 }
@@ -109,7 +137,7 @@ async function writeDB(db: UsersDB): Promise<void> {
   return saveRedisDB(db);
 }
 
-// ─── Password helpers ──────────────────────────────────────────────────────
+// ─── Password helpers ─────────────────────────────────────────────────────────
 export function hashPassword(password: string): string {
   return bcrypt.hashSync(password, 12);
 }
@@ -118,40 +146,7 @@ export function verifyPassword(password: string, hash: string): boolean {
   return bcrypt.compareSync(password, hash);
 }
 
-// ─── Admin first-run guard ────────────────────────────────────────────────
-async function checkAdminInitialized(): Promise<boolean> {
-  if (!IS_PROD) {
-    const db = await getLocalDB();
-    return db.adminInitialSetup;
-  }
-  if (!HAS_REDIS) {
-    const db = await getLocalDB();
-    return db.adminInitialSetup;
-  }
-  const redis = await getRedis();
-  if (!redis) return false;
-  const val = await redis.get<string>(ADMIN_FLAG_KEY);
-  return val === 'true';
-}
-
-async function setAdminInitialized(): Promise<void> {
-  if (!IS_PROD) {
-    const db = await getLocalDB();
-    db.adminInitialSetup = true;
-    await saveLocalDB(db);
-    return;
-  }
-  if (!HAS_REDIS) {
-    const db = await getLocalDB();
-    db.adminInitialSetup = true;
-    await saveLocalDB(db);
-    return;
-  }
-  const redis = await getRedis();
-  if (redis) await redis.set(ADMIN_FLAG_KEY, 'true');
-}
-
-// ─── Public API (all async) ────────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────────
 export async function createUser(data: {
   email: string;
   password: string;
@@ -194,79 +189,24 @@ export async function createUser(data: {
 }
 
 export async function findUserByEmail(email: string): Promise<AuthUser | null> {
-  // Hardcoded admin always available in both prod and dev
-  if (email.toLowerCase() === 'admin@asiabridge.com') {
-    const now = new Date().toISOString();
-    return {
-      id: 'env-admin',
-      email: 'admin@asiabridge.com',
-      passwordHash: '$2a$12$7bX20h4tVK7tUNiXjBjc2uYKiMZl2m9x4Jl9cCw0wIGAAqe9HdT.i',
-      companyName: '平台管理',
-      contactName: '平台管理员',
-      phone: '',
-      country: '',
-      industry: '',
-      role: 'admin' as const,
-      status: 'active' as const,
-      createdAt: now,
-      updatedAt: now,
-      lastLogin: now,
-      subscription: { planId: 'admin', status: 'active' as const, startDate: now, endDate: now },
-    };
+  // Env-based admin is always available (bypasses DB)
+  if (isEnvAdmin(email)) {
+    return makeEnvAdmin(new Date().toISOString());
   }
   const db = await readDB();
   return db.users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
 }
 
 export async function findUserById(id: string): Promise<AuthUser | null> {
-  if (id === 'env-admin') {
-    const now = new Date().toISOString();
-    return {
-      id: 'env-admin',
-      email: 'admin@asiabridge.com',
-      passwordHash: '$2a$12$7bX20h4tVK7tUNiXjBjc2uYKiMZl2m9x4Jl9cCw0wIGAAqe9HdT.i',
-      companyName: '平台管理',
-      contactName: '平台管理员',
-      phone: '',
-      country: '',
-      industry: '',
-      role: 'admin' as const,
-      status: 'active' as const,
-      createdAt: now,
-      updatedAt: now,
-      lastLogin: now,
-      subscription: { planId: 'admin', status: 'active' as const, startDate: now, endDate: now },
-    };
+  if (isEnvAdminId(id)) {
+    return makeEnvAdmin(new Date().toISOString());
   }
   const db = await readDB();
   return db.users.find((u) => u.id === id) || null;
 }
 
-function buildEnvAdminUser(passwordOverride?: string): AuthUser {
-  const now = new Date().toISOString();
-  const passwordHash = passwordOverride
-    ? hashPassword(passwordOverride)
-    : DEFAULT_ADMIN_PASSWORD_HASH;
-  return {
-    id: 'env-admin',
-    email: ENV_ADMIN_EMAIL!.toLowerCase(),
-    passwordHash,
-    companyName: '平台管理',
-    contactName: ENV_ADMIN_NAME,
-    phone: '',
-    country: '',
-    industry: '',
-    role: 'admin',
-    status: 'active',
-    createdAt: now,
-    updatedAt: now,
-    lastLogin: now,
-    subscription: { planId: 'admin', status: 'active', startDate: now, endDate: now },
-  };
-}
-
 export async function updateUserLastLogin(id: string): Promise<void> {
-  if (id === 'env-admin') return; // env admin can't be written back
+  if (isEnvAdminId(id)) return; // env admin can't be written back
   const db = await readDB();
   const idx = db.users.findIndex((u) => u.id === id);
   if (idx !== -1) {
@@ -279,7 +219,7 @@ export async function updateUser(
   id: string,
   data: Partial<Pick<AuthUser, 'role' | 'status' | 'companyName' | 'contactName' | 'phone' | 'country' | 'industry' | 'subscription'>>
 ): Promise<AuthUser | null> {
-  if (id === 'env-admin') return null; // env admin cannot be modified
+  if (isEnvAdminId(id)) return null; // env admin cannot be modified
   const db = await readDB();
   const idx = db.users.findIndex((u) => u.id === id);
   if (idx === -1) return null;
@@ -303,32 +243,16 @@ export async function deleteUser(id: string): Promise<boolean> {
 
 export async function getAllUsers(): Promise<AuthUser[]> {
   const db = await readDB();
-  const now = new Date().toISOString();
-  const hardcodedAdmin: AuthUser = {
-    id: 'env-admin',
-    email: 'admin@asiabridge.com',
-    passwordHash: '$2a$12$7bX20h4tVK7tUNiXjBjc2uYKiMZl2m9x4Jl9cCw0wIGAAqe9HdT.i',
-    companyName: '平台管理',
-    contactName: '平台管理员',
-    phone: '',
-    country: '',
-    industry: '',
-    role: 'admin' as const,
-    status: 'active' as const,
-    createdAt: now,
-    updatedAt: now,
-    lastLogin: now,
-    subscription: { planId: 'admin', status: 'active' as const, startDate: now, endDate: now },
-  };
-  return [hardcodedAdmin, ...db.users];
+  // Env admin always appears first in the list
+  return [makeEnvAdmin(new Date().toISOString()), ...db.users];
 }
 
 export async function isAdminSetupDone(): Promise<boolean> {
-  return true; // hardcoded admin always available
+  return true; // env admin is always available
 }
 
 export async function setAdminSetupDone(): Promise<void> {
-  return setAdminInitialized();
+  // No-op: env admin is always set up
 }
 
 export async function createAdminAccount(
@@ -337,34 +261,11 @@ export async function createAdminAccount(
   companyName: string,
   contactName: string
 ): Promise<AuthUser | null> {
-  const alreadyDone = await isAdminSetupDone();
-  if (alreadyDone) return null;
-  const db = await readDB();
-  if (db.adminInitialSetup) return null;
-  const now = new Date().toISOString();
-  const admin: AuthUser = {
-    id: nanoid(16),
-    email: email.toLowerCase().trim(),
-    passwordHash: hashPassword(password),
-    companyName: companyName.trim(),
-    contactName: contactName.trim(),
-    phone: '',
-    country: '',
-    industry: '',
-    role: 'admin',
-    status: 'active',
-    createdAt: now,
-    updatedAt: now,
-    lastLogin: now,
-    subscription: { planId: 'admin', status: 'active', startDate: now, endDate: now },
-  };
-  db.users.push(admin);
-  db.adminInitialSetup = true;
-  await writeDB(db);
-  await setAdminInitialized();
-  return admin;
+  // Since env admin always exists, reject this request
+  return null;
 }
 
+// Strip passwordHash before returning to the client
 export function safeUser(user: AuthUser): User {
   const { passwordHash: _pw, ...result } = user;
   return result as User;

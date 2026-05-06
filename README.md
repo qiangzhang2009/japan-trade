@@ -133,8 +133,7 @@ src/
 │   ├── layout/             # 布局组件（Header, Footer, SiteLayout）
 │   └── opportunities/       # 商机相关组件
 ├── lib/
-│   ├── dataService.ts      # 数据读写服务
-│   ├── mockData.ts         # 静态模拟数据
+│   ├── dataService.ts      # 数据读写服务（从 public/data/*.json 读取）
 │   └── utils.ts            # 工具函数
 ├── types/
 │   └── index.ts            # TypeScript 类型定义
@@ -151,7 +150,7 @@ scripts/
 ## 添加新国家/地区
 
 1. 在 `scripts/collector.js` 的 `RSS_SOURCES` 数组中添加新的 RSS 源配置
-2. 在 `src/lib/mockData.ts` 的 `countries.json` 部分添加国家信息
+2. 在 `public/data/countries.json` 中添加国家信息
 3. 在 `src/app/sitemap.ts` 中添加国家页 sitemap 条目
 4. 运行 `node scripts/collector.js --dry-run` 测试新数据源
 

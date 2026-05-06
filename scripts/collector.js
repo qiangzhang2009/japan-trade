@@ -1,12 +1,28 @@
 #!/usr/bin/env node
 /**
- * 出海通 AsiaBridge — 智能数据采集器 v11
+ * 出海通 AsiaBridge — 智能数据采集器 v13
  * =============================================
  * 支持方式：
  *   - RSS/Atom feeds（主流）
  *   - HTML页面抓取（cheerio，备选）
- *   - 政府贸易门户（KOTRA/BOI/METI/贸工部等，高质量数据源）
- * 
+ *   - 政府贸易门户（KOTRA/Nara Jangteo/BOI/METI/贸工部等，高质量数据源）
+ *   - 政府招标平台（Nara Jangteo韩国/JETRO采购/中国台湾招标等）
+ *
+ * 新增数据源 v13（基于GitHub调研集成）：
+ *   - 韩国 Nara Jangteo 国家招标门户 (g2b.go.kr)
+ *   - 中国台湾政府采购招标资讯
+ *   - 越南 FTA 关税资讯门户 (RCEP/AANZFTA/EVFTA)
+ *   - KOTRA 全球采购商数据库
+ *   - 印尼 BKPM 投资机会
+ *   - 菲律宾 PEZA 经济特区投资
+ *   - Nikkei Asia / Economist Asia 泛亚洲RSS
+ *   - 中国台湾/两岸贸易关键词扩展
+ *
+ * 数据质量原则：
+ *   1. 只采集与中国-亚洲贸易直接相关的商机内容
+ *   2. 排除所有新闻报道（行情、汇率、股价、会议报道等）
+ *   3. 政府门户 > 专业媒体 > 综合新闻
+ *
  * 运行:
  *   node collector.js              # 全量采集
  *   node collector.js --dry-run   # 预览
@@ -802,31 +818,412 @@ const SOURCES = [
     ],
     threshold: 2,
   },
+
+  // ═══════════════════ 新增数据源 v13 (基于GitHub调研) ═══════════════════
+  // ── 韩国政府招标门户 Nara Jangteo (g2b.go.kr) ───────────────────────────
+  // 韩国国家招标平台，发布政府及公共机构采购公告
+  // 官方参考: seoweon/narajangteo, Datajang/narajangteo_mcp_server
+  {
+    id: 'kr-narajangteo',
+    country: 'south-korea', tier: 1,
+    name: '나라장터 Nara Jangteo 韩国国家招标门户',
+    type: 'html',
+    url: 'https://www.g2b.go.kr:8080/ep/tbid/tbidList.do?taskClCds=&bidClCds=&bidNm=&orgNm=&splyMthdCd=&prptClCds=&tASKClCds=&strAthlNms=&strAreaNms=&strBupBjdongCd=&bupBjdongCd=&detailDomainCd=&detailDomainNm=&clntNm=&fromBidDt=',
+    bizKW: [
+      '중국', '中한국', '한중', '중한', '한국.*중국', '중국.*한국',
+      'Chinese', 'China', '在中国的', '中国向', '对中国',
+      '투자.*파트너', '협력.*中国企业', '중국.*사업',
+      '中国.*合作', '对中国.*투자', 'seeking Chinese partner',
+      'looking.*Korea.*partner', 'Korea.*China JV', 'korean.*seeking supplier',
+      '对中国企业.*招商引资', '한국.*중국.*합작', '对中国.*OEM', '对中国.*調達',
+      '수입.*중국', '중국.*수입', '수출.*중국', '중국.*수출',
+      '한국.*중국.*무역', '한국.*중국.*거래',
+      '进口.*中国', '中国.*进口', '出口.*中国', '中国.*出口',
+    ],
+    contextKW: [
+      '중국', '한중', '중한', '한국.*중국', '중국.*한국',
+      'China', 'ASEAN', 'Southeast Asia', 'trade', 'export', 'import',
+      'investment', 'manufacturing', 'supply chain', 'bilateral', '경제',
+      '수입', '수출', '무역', '투자', '협력', '사업', '거래',
+      '입찰', '조달', '구매', 'procurement', 'bid', 'contract',
+    ],
+    industryKW: [
+      '반도체', '전자', '자동차', 'EV', ' Battery', '로봇', '정밀기계',
+      '화학', '의료', '바이오', 'pharma', 'semiconductor', '디스플레이',
+      'ICT', 'SW', 'software', 'hardware', '기자재', '原材料', '부품',
+    ],
+    threshold: 2,
+  },
+
+  // ── 韩国 KOTRA Open API (KOTRA 공식 Open API) ──────────────────────────────
+  // KOTRA 提供市场进入策略API，JSON格式返回商机关联数据
+  // API: https://www.kotra.or.kr/khotlinks/cnnews/rss/mainNews.do
+  // KOTRA 全球采购商数据库 (通过RSS近似)
+  {
+    id: 'gov-kotra-purchase',
+    country: 'south-korea', tier: 1,
+    name: 'KOTRA 韩国贸易协会 全球采购商数据库',
+    type: 'rss',
+    url: 'https://www.kotra.or.kr/khotlinks/cnnews/rss/mainNews.do',
+    bizKW: [
+      '투자.*파트너', '협력.*中国企业', '중국.*사업', '中国.*合作',
+      '对中国.*투자', 'seeking Chinese partner', 'looking.*partner',
+      'Korea.*China JV', 'Korea.*China deal', '한국.*중국.*합작',
+      '한국.*중국.*투자', '한국.*중국.*협력', 'korean.*seeking supplier',
+      '对中国企业.*招商引资', '对中国.*OEM', '对中国.*調達',
+      '수입.*중국', '중국.*수입', '구매.*중국', '중국.*구매',
+      '한국.*중국.*구매', '한국.*중국.*수입',
+    ],
+    contextKW: [
+      '중국', '한중', '중한', '한국.*중국', '중국.*한국',
+      'China', 'Chinese', '투자', '협력', '합작', '사업', '투자유치',
+      '구매', '수입', '수출', '무역', '거래', '입찰', '조달',
+    ],
+    industryKW: [
+      '반도체', '전자', '자동차', 'EV', ' Battery', '로봇',
+      '정밀기계', '화학', '의료', '바이오', 'pharma', 'semiconductor',
+      'ICT', 'SW', 'software', 'hardware', '농산물', '식품',
+    ],
+    threshold: 2,
+  },
+
+  // ── 中国台湾政府采购招标 (Taiwan Government Procurement) ──────────────────────
+  // 中国台湾政府电子采购网站，每月发布数万条采购公告
+  // 参考: hunglin59638/twtender
+  {
+    id: 'tw-procurement',
+    country: 'taiwan', tier: 2,
+    name: '中国台湾 政府采购招标资讯',
+    type: 'html',
+    url: 'https://web.pcc.gov.tw/prkms/prms-report/tenderReport',
+    bizKW: [
+      '中国大陆', '中国厂商', '中国供应商', '中国制造',
+      'China', 'Chinese', 'Chinese supplier', 'Chinese manufacturer',
+      ' Taiwan.*China', 'China.*Taiwan', 'cross-strait', 'ECFA',
+      'Taiwan.*Chinese.*partner', 'seeking.*supplier.*Taiwan',
+      '中国台湾.*中国.*合作', '中国.*中国台湾.*投资', '两岸.*贸易',
+      '对台.*采购', '台商.*中国', '中国大陆.*供应商',
+    ],
+    contextKW: [
+      '中国大陆', '中国', '中国台湾', 'Taiwan', 'Chinese', 'China',
+      '两岸', 'cross-strait', 'ECFA', '采购', '招标', '招标公告',
+      '政府采购', '得标', '决标', 'procurement', 'tender', 'bid',
+      'import', 'export', 'trade', 'supplier', 'manufacturer',
+    ],
+    industryKW: [
+      '半导体', '电子', '电机', 'ICT', '信息', '软件', '硬件',
+      '机械', '化工', '医疗', '生技', '光电', '纺织', '食品',
+      'semiconductor', 'electronics', 'machinery', 'chemical', 'medical',
+      'pharma', 'textile', 'food', 'automotive', 'EV', 'battery',
+    ],
+    threshold: 2,
+  },
+
+  // ── 越南 FTA 关税数据 (Vietnam FTA Tariff Crawler) ──────────────────────────
+  // 越南FTA关税信息门户，支持RCEP、中国-东盟FTA等
+  // 参考: daohoangson/js-fta-crawler
+  {
+    id: 'vn-fta-tariff',
+    country: 'vietnam', tier: 1,
+    name: 'Vietnam FTA 越南 FTA 关税资讯门户',
+    type: 'html',
+    url: 'https://fta.moit.gov.vn/',
+    bizKW: [
+      'tìm.*đối tác', 'tìm.*nhà cung cấp', 'tìm.*đại lý',
+      'cần.*nhập.*Trung Quốc', 'nhập.*từ Trung Quốc',
+      'xuất.*sang Trung Quốc', 'đầu tư.*Trung Quốc',
+      'hợp tác.*Trung Quốc', 'việt-trung',
+      'Trung Quốc.*đầu tư', 'Trung Quốc.*nhà máy',
+      'seeking.*partner.*Vietnam', 'Vietnam.*Chinese supplier',
+      'Vietnam.*China JV', 'Vietnam.*supply chain China',
+      '越南.*中国.*FTA', 'RCEP.*越南', '中国-东盟.*越南',
+      'Vietnam.*China.*FTA', 'AANZFTA.*Vietnam', 'EVFTA.*Vietnam',
+    ],
+    contextKW: [
+      'Trung Quốc', '中国', 'FTA', 'RCEP', 'AANZFTA', 'EVFTA',
+      'ATIGA', 'WTO', 'ASEAN', 'AEC', 'xuất khẩu', 'nhập khẩu',
+      'đầu tư FDI', 'thuế quan', 'thuế NK', 'thuế XK',
+      'tariff', 'preferential', 'mfri', 'MFN',
+    ],
+    industryKW: [
+      'điện tử', 'electronics', 'thép', 'steel', 'dệt nhuộm', 'textile',
+      'nội thất', 'furniture', 'manufacturing', 'nông sản', 'agri',
+      'EV', 'semi', 'battery', 'ô tô', 'automotive', 'thực phẩm', 'food',
+      'nhựa', 'plastic', 'hóa chất', 'chemical', 'dược phẩm', 'pharma',
+      'công nghiệp', 'bán dẫn', 'chip', 'IC',
+    ],
+    threshold: 2,
+  },
+
+  // ── 印度尼西亚 BKPM 投资数据 (Indonesia Investment Coordinating Board) ───────
+  // 印尼投资统筹机构发布的投资机会公告
+  // 参考: suryast/indonesia-civic-stack
+  {
+    id: 'gov-id-bkpm-invest',
+    country: 'indonesia', tier: 2,
+    name: 'BKPM Indonesia 印尼投资统筹机构 投资机会',
+    type: 'html',
+    url: 'https://nsop.go.id/news',
+    bizKW: [
+      'Indonesia.*China investasi', 'mitra.*China',
+      'kerja sama.*China', 'joint venture.*Indonesia',
+      'Indonesia.*import dari China', 'Indonesia.*RCEP',
+      'Indonesia.*FDI.*China', 'Indonesia OEM',
+      'China.*Indonesia.*investment', 'Chinese.*Indonesia partner',
+      'Indonesia.*China JV', 'Indonesia.*Chinese deal',
+      '印尼.*中国.*投资', '中国.*印尼.*合作', '印尼.*中国.*贸易',
+      'Chinese investor.*Indonesia', 'China-Indonesia.*project',
+      'nilai.*investasi.*China', 'kerja sama.*Tiongkok',
+    ],
+    contextKW: [
+      'China', 'Cina', 'Tiongkok', 'Indonesia', 'ASEAN',
+      'BKPM', 'investasi', 'FDI', 'investment', 'proyek',
+      'trade', 'export', 'import', 'manufacturing', 'bilateral', 'RCEP',
+      'kerja sama', 'mitra', 'partner', 'kolaborasi',
+    ],
+    industryKW: [
+      'nickel', 'nikel', 'EV', 'battery', 'semiconductor',
+      'textile', 'manufacturing', 'coal', 'palm oil', 'agri',
+      'FMCG', 'chemical', 'mining', 'smelter', 'oleum',
+      'solar', 'EPC', 'infrastruktur', 'construction',
+    ],
+    threshold: 2,
+  },
+
+  // ── 马来西亚 MATRADE (升级为 tier-1) ──────────────────────────────────────
+  // MATRADE 是马来西亚官方对外贸易促进机构，商机关联性强
+  // 当前已有 gov-my-miti (tier:2)，补充专用商机关联RSS
+  {
+    id: 'my-matrade-opp',
+    country: 'malaysia', tier: 1,
+    name: 'MATRADE Malaysia 对外贸易发展局 商机速递',
+    type: 'html',
+    url: 'https://www.matrade.gov.my/en/media/news',
+    bizKW: [
+      'Malaysia.*China.*investment', 'Malaysia.*China deal',
+      'China.*Malaysia JV', 'Malaysia.*Chinese partner',
+      'Malaysia.*supply chain.*China', 'Malaysia.*import.*China',
+      'MATRADE.*China', 'Malaysia.*RCEP.*China',
+      'looking.*supplier.*Malaysia', 'Malaysia.*buyer.*China',
+      'Malaysia.*Chinese.*buyer', '寻找.*马来西亚.*伙伴',
+      '中国.*马来西亚.*合作', '马来西亚.*中国.*商机',
+    ],
+    contextKW: [
+      'China', 'Chinese', 'MATRADE', 'Malaysia', 'ASEAN',
+      'trade', 'export', 'import', 'investment', 'manufacturing',
+      'supply chain', 'RCEP', 'E&E', 'halal', 'bilateral',
+      'perdagangan', 'pelaburan', 'rakan', 'mitra',
+    ],
+    industryKW: [
+      'semiconductor', 'electronics', 'E&E', 'automotive', 'solar',
+      'oil.*gas', 'palm oil', 'medical', 'glove', 'manufacturing',
+      'chemical', 'pharma', 'food', 'halal', 'machinery',
+    ],
+    threshold: 2,
+  },
+
+  // ── 菲律宾 PEZA 经济特区投资机会 ──────────────────────────────────────────
+  // PEZA 经济特区管理局的投资促进公告
+  {
+    id: 'ph-peza-invest',
+    country: 'philippines', tier: 2,
+    name: 'PEZA Philippines 经济特区管理局 投资机会',
+    type: 'html',
+    url: 'https://peza.gov.ph/index.php/news-and-announcements',
+    bizKW: [
+      'Philippines.*China investment', 'Philippines.*Chinese partner',
+      'Philippines.*China deal', 'Philippines.*China JV',
+      'PEZA.*China', 'Philippines.*FDI.*China',
+      'Philippines.*supply chain.*China', 'China.*Philippines.*project',
+      'Chinese.*Philippines.*investment', 'Philippines.*Chinese OEM',
+      '菲律宾.*中国.*投资', '中国.*菲律宾.*合作',
+      'Philippines.*China.*business', 'China.*Philippines.*JV',
+    ],
+    contextKW: [
+      'China', 'Chinese', 'Philippines', 'Filipino', 'ASEAN', 'PEZA',
+      'trade', 'export', 'import', 'investment', 'manufacturing', 'FDI',
+      'economic zone', 'special economic', 'BOI', 'investment promotion',
+    ],
+    industryKW: [
+      'semiconductor', 'electronics', 'BPO', 'manufacturing',
+      'agri', 'tourism', 'infrastructure', 'logistics',
+      'garment', 'food processing', 'IT', 'ICT', 'EOU',
+    ],
+    threshold: 2,
+  },
+
+  // ═══════════════════ 新增泛亚洲优质 RSS 源 ═══════════════════════════════════
+  // ── JETRO 日本贸易振兴机构 专门商机关联频道 ────────────────────────────────
+  {
+    id: 'jp-jetro-cn',
+    country: 'japan', tier: 1,
+    name: 'JETRO 中国ビジネス支援 专页',
+    type: 'html',
+    url: 'https://www.jetro.go.jp/world/asia/cn/',
+    bizKW: [
+      '代理店', '经销', '代理商募集', '招募经销商', 'OEM.*募集',
+      '調達.*中国企业', '中国側.*調達', '中国企业提供',
+      '对中国企业感兴趣', '中国侧合作伙伴', 'joint venture',
+      'manufacturing partner', 'license.*production',
+      '对中国.*進出', '中国側.*パートナー', '日中.*合作',
+    ],
+    contextKW: [
+      '中国', '中国ビジネス', '中国企業', 'China', 'Chinese',
+      'JETRO', '日中', '対中', '輸出', '輸入', '製造業',
+      'trade', 'investment', 'cooperation', 'partnership',
+    ],
+    industryKW: [
+      '半導', 'EV', 'robot', 'AI', '精密機械', 'manufacturing',
+      'electronics', 'chemical', 'medical', 'semiconductor', 'battery',
+      '新材料', ' hydrogen', ' factory', '食品', '農業',
+    ],
+    threshold: 2,
+  },
+
+  // ── Nikkei Asia 亚洲贸易新闻 ─────────────────────────────────────────────
+  {
+    id: 'nikkei-asia',
+    country: 'all', tier: 0,
+    name: 'Nikkei Asia 贸易与投资新闻',
+    type: 'rss',
+    url: 'https://asia.nikkei.com/rssfeed',
+    bizKW: [
+      'China.*ASEAN.*investment', 'China.*Southeast Asia deal',
+      'Southeast Asia.*manufacturing shift', 'China.*Vietnam investment',
+      'China.*Asia.*supply chain', 'Asia.*investment opportunity',
+      'China.*outbound investment', 'RCEP.*trade deal',
+      'China.*Japan.*trade', 'China.*Korea.*trade', 'China.*India.*trade',
+      'Chinese company.*Southeast', 'China.*Southeast Asia.*FDI',
+    ],
+    contextKW: [
+      'China-ASEAN', 'China.*Southeast', 'China.*Vietnam',
+      'China.*Japan', 'China.*South.*Korea', 'China outbound',
+      'Southeast Asia.*trade', 'Asia.*manufacturing', 'supply chain.*shift',
+      'China', 'Chinese', 'ASEAN', 'RCEP', 'bilateral',
+    ],
+    industryKW: [
+      'semiconductor', 'technology', 'EV', 'battery', 'manufacturing',
+      'supply.*chain', 'trade', 'AI', 'chips', 'outsourcing',
+      'electronics', 'automotive', 'energy', 'chemical',
+    ],
+    threshold: 2,
+  },
+
+  // ── The Economist Asia Business ───────────────────────────────────────────
+  {
+    id: 'economist-asia',
+    country: 'all', tier: 0,
+    name: 'The Economist 亚洲商务',
+    type: 'rss',
+    url: 'https://www.economist.com/asia-business/rss.xml',
+    bizKW: [
+      'China.*investment.*Asia', 'China.*Southeast Asia deal',
+      'Asia.*supply chain shift', 'China.*Vietnam.*factory',
+      'Asia.*RCEP.*trade', 'China.*Asia.*outbound',
+      'Chinese firm.*Asia', 'China.*ASEAN.*FDI',
+      'Asia.*manufacturing.*relocation', 'China.*Asia.*partnership',
+    ],
+    contextKW: [
+      'China', 'Chinese', 'ASEAN', 'Southeast Asia', 'Asia',
+      'bilateral', 'trade', 'investment', 'manufacturing', 'supply chain',
+      'RCEP', 'outbound', 'FDI',
+    ],
+    industryKW: [
+      'semiconductor', 'technology', 'EV', 'battery', 'manufacturing',
+      'electronics', 'automotive', 'pharma', 'chemical', 'energy',
+    ],
+    threshold: 2,
+  },
 ];
 
 // ═════════════════════════════════════════════════════════════════════════════
 // PATTERNS — industry / cooperation / type inference
 // ═════════════════════════════════════════════════════════════════════════════
 const INDUSTRY_PATTERNS = [
-  ['半导体/电子', ['半導', '集積回路', 'semiconductor', 'IC', 'chips', '디스플레이', 'display', 'E&E', '電子', '전자', 'DRAM', 'NAND', 'SOC', 'GPU', 'PCB', 'LED', 'LSI', 'chipsets', 'fab', 'foundry', 'CPU', '传感器', 'sensor', 'sensor', 'カメラ', '镜头', '光学']],
-  ['新能源汽车', ['EV', 'Electric Vehicle', '전기자동차', '완성차', ' automobile', ' automotive', '배터리', 'battery', '蓄电池', '新能源', 'E-car', ' Electrified', 'xEV', '电动汽车', '电瓶', '充电桩']],
-  ['工业自动化', ['robot', 'ロボット', ' automation', 'FA', '工作機械', '산업로봇', 'machinery', '自动化', 'PLC', 'sensor', 'DCS', ' IoT', '自动化设备', '工业机器人', '自动化系统']],
-  ['医疗器械', ['医療', '医薬', '創薬', 'pharma', 'pharmaceutical', 'biomedical', '의료', '병원', 'healthcare', 'medical device', '制药', 'drug', 'clinical', '医药', '生物医药', '医院']],
-  ['化工材料', ['化学', '新材料', '素材', 'chemical', 'steel', '化学品', '新材料', 'polymer', 'resin', 'elastomer', '化工', '石化', '树脂', '橡胶', '新材料']],
-  ['纺织服装', ['纺织', '衣類', 'textile', 'fabric', '生地', 'garment', 'ตัดเย็บ', 'เสื้อผ้า', 'dệt nhuộm', 'nội thất', 'yarn', 'denim', 'woven', '服装', '面料', '纱线']],
-  ['家具制造', ['家具', 'furniture', 'mebel', 'interior', '木工', ' fixture', 'upholstery', 'solid wood', '木质', '家私', '室内装饰']],
-  ['食品农业', ['農業', '农业', 'agri', '食品', 'food', '加工食品', '농업', 'Palm Oil', 'nông sản', 'seed', 'fertilizer', 'agrochemical', '农产品', '种植', '畜牧业', '养殖']],
-  ['金融服务', ['金融', 'finance', 'fintech', '保险', 'bank', '銀行', '투자', 'investment', 'trading', 'wealth', 'insurtech', '银行', '基金', '投资', '财富管理', '资产管理']],
-  ['能源电力', ['エネルギー', '能源', '再エネ', 'hydrogen', ' 水素', 'solar', '光伏', 'EV charging', '電力', 'hydropower', 'coal', 'electric power', 'LNG', 'lng', 'renewable', '电力', '风电', '光伏发电', '天然气', '煤炭']],
-  ['IT/软件', ['IT', 'software', 'AI', 'internet', 'IoT', '通信', 'telecom', 'digital', '데이터', '로봇', 'cloud', 'cyber', 'data center', 'SaaS', '人工智能', '数字经济', '数据中心', '云计算']],
-  ['贸易/物流', ['logistics', '物流', 'Eコマース', '跨境', 'trade', '通関', 'customs', 'shipping', 'freight', 'supply chain', 'vận tải', 'warehouse', '3PL', 'ecommerce', '供应链', '仓储', '跨境电商', '通关']],
-  ['钢铁/金属', ['steel', '鉄', '금속', 'nickel', 'coal', '铝', 'copper', 'mining', 'thép', 'mining', 'metals', 'aluminum', 'zinc', '冶金', '矿产', '稀土', '铝材', '铜材']],
-  ['房地产/建筑', ['real estate', '不动', '不動産', 'property', 'construction', '建设', 'infrastructure', 'building', 'bất động sản', 'cement', 'concrete', ' REIT', '基建', '不动产', '地产']],
-  ['汽车/摩托车', ['automotive', 'automobile', 'cars', 'vehicles', 'motorcycle', 'OEM', 'auto parts', ' 汽车', '摩托车', '整车', '零部件', '车载']],
-  ['教育培训', ['教育', 'education', '培训', 'training', '人才', 'talent', 'HR', 'edtech', '人才培训', '技能培训']],
-  ['消费电子', ['consumer electronics', 'smartphone', '手机', '家电', ' home appliance', 'Wearable', 'tablets', 'TV', 'oled', 'lcd panel', '手机', '电视', '显示屏']],
-  ['海洋工程', ['shipbuilding', '조선', 'ship', '船舶', 'maritime', '海工', '造船', '航海', '港口', 'port', '码头', '海洋']],
-  ['航空航天', ['航空', 'aerospace', 'aviation', 'aircraft', 'drone', ' UAV', '飞机', '无人机', '航天']],
+  ['半导体/电子', ['半導', '集積回路', 'semiconductor', 'IC design', 'chips design', 'fabless', 'foundry',
+    'DRAM', 'NAND flash', 'NOR flash', 'SOC chip', 'GPU design', 'CPU design', 'AI chip',
+    '디스플레이', 'OLED panel', 'LCD panel', 'display panel', 'E&E sector',
+    'PCB.*manufactur', 'PCB assembly', 'printed circuit',
+    'LED chip', 'LED grow', '光レ', '光学镜片', 'カメラモジュール',
+    'sensor chip', 'MCU chip', 'ASIC', 'FPGA', '传感器芯片',
+    '半导体设备', '光刻机', '蚀刻机', '晶圆厂', '芯片制造', '晶圆制造']],
+  ['新能源汽车', ['EV model', 'Electric Vehicle', '전기자동차', '완성차', ' automobile', ' automotive', '배터리',
+    'battery pack', 'lithium battery', '电池包', '蓄电池组',
+    '新能源', 'E-car', ' Electrified', 'xEV', '电动汽车', '电瓶车',
+    '充电桩', '充电站', '换电站', '动力电池', '电芯']],
+  ['工业自动化', ['robot arm', ' industrial robot', ' robot manufacturer', ' robot system',
+    '自动化.*集成', '工业机器人', '自动化系统', '自动化设备',
+    ' factory automation', 'FA.*system', ' machinery manufacturer',
+    '工作機械', 'CNC.*machine', 'PLC controller', '自动化生产线',
+    ' Industries Robot', '로봇', ' robot maker', ' robot maker']],
+  ['医疗器械', ['医疗器械', '医疗设备', '医用影像', '体外诊断', '医用耗材', '医用机器人',
+    'MRI.*system', 'CT scanner', '超声设备', '手术机器人', '达芬奇手术',
+    'pharma.*manufactur', 'pharmaceutical raw', '原料药', 'API.*manufactur',
+    'biomedical', ' biomed', '医院设备', ' diagnostic reagent', '体外诊断',
+    '制药设备', '医药中间体', ' drug substance']],
+  ['化工材料', ['新材料', '先进材料', 'specialty chemical', '高性能材料',
+    ' steel plant', ' steel mill', ' steelmaking', '冶金', 'metalurg',
+    'polymer resin', ' 工程塑料', ' elastomer', '化工.*园区', '石化产品',
+    '合成橡胶', '氟化工', '硅材料', '碳纤维', ' graphene',
+    ' nickel.*smelter', ' nickel laterite', '铜冶炼', '铝加工']],
+  ['纺织服装', [' textile mill', ' fabric mill', ' garment factory', ' apparel manufacturer',
+    ' yarn manufacturer', ' fiber producer', ' denim mill', ' weaving factory',
+    ' 成衣', '纺织面料', '纱线', '面料', '服装厂', '纺织厂',
+    'dệt nhuộm', ' nội thất', ' khổ vải', 'vải.*xuất khẩu',
+    ' garment maker', ' garment maker', ' apparel maker']],
+  ['家具制造', ['家具', 'furniture', 'mebel', 'interior.*furnish', ' fixture', '木制家具',
+    '室内装饰', '办公家具', '家居用品', ' solid wood', '木质家具', ' uphostery']],
+  ['食品农业', ['农产品', '农业机械', '食品加工', '畜产', '水产养殖', ' plant protein',
+    ' agri equipment', ' agricultural machinery', ' farm machinery',
+    ' food processing', ' food ingredient', ' 食品原料', ' 食品添加剂',
+    '粮食加工', '油脂加工', '乳制品', '冷链食品', '生鲜',
+    'nông sản', 'thực phẩm', 'trồng trọt', 'chăn nuôi', 'cây trồng',
+    'Palm Oil', '橡胶', '咖啡', '胡椒', '坚果',
+    ' agrochemical', ' fertilizer', ' seed.*company', '农药化肥', '种子']],
+  ['金融服务', ['金融科技', 'fintech', '数字支付', '移动支付', '第三方支付',
+    '数字银行', '互联网保险', '财富管理', '资产管理',
+    'payment gateway', 'digital wallet', ' remittance', ' cross-border payment',
+    ' insurtech', ' trading platform', ' digital banking',
+    '金融支付', '电子支付', '聚合支付', '跨境金融']],
+  ['能源电力', ['エネルギー', '新能源', '光伏组件', '光伏逆变器', '储能系统', '储能电池',
+    ' hydrogen electrolyzer', ' hydrogen fuel', '燃料电池', '电解槽',
+    '再エネ', 'solar panel', 'PV module', 'photovoltaic', '风电设备',
+    ' hydro turbine', '水力发电', ' LNG terminal', '天然气接收站',
+    ' coal.*plant', '电力设备', '输配电设备', '电线电缆']],
+  ['IT/软件', [' software company', ' SaaS platform', ' AI solution', ' cloud service',
+    ' AI model', ' artificial intelligence', '大模型', '机器学习',
+    'IT service', 'IT solution', ' software development', ' system integration',
+    'data center', ' IDC', '云计算', '云服务', '人工智能',
+    ' robotics software', '无人驾驶', '自动驾驶', '智能驾驶',
+    ' IoT platform', ' industrial IoT', '网络安全', '信息安全']],
+  ['贸易/物流', [' logistics company', ' freight forwarder', ' 3PL', ' third-party logistics',
+    ' supply chain solution', ' warehouse management', '仓储物流', '跨境物流',
+    ' shipping company', '船公司', '海运公司', '货代',
+    '冷链物流', '快递', '配送', '干线运输', '跨境电商平台',
+    'ecommerce platform', ' cross-border e-commerce', '跨境电商']],
+  ['钢铁/金属', [' steel', ' steel company', ' steel mill', ' steelmaking', ' steel plant',
+    '铁', '금속', ' logam', '金属材料', '铜材', '铝材', '钢材',
+    ' nickel ore', ' nickel pig iron', '镍铁', '稀土', '贵金属',
+    ' copper smelter', ' copper rod', ' aluminum extrusion', '金属冶炼']],
+  ['房地产/建筑', [' real estate', ' property development', ' 不动产', ' 建机租赁',
+    ' construction company', ' 工程承包', ' 建筑公司', '建材贸易',
+    '基础设施', ' 交通设施', '工业园区', '地产开发', '房产',
+    ' cement plant', '混凝土', '瓷砖', '卫浴', '建筑陶瓷', '水泥',
+    ' bất động sản', 'nhà ở', 'chung cư', 'đô thị']],
+  ['汽车/摩托车', [' automobile', ' automotive', ' cars', ' vehicles', ' motorbike',
+    '汽车', '摩托车', '电动车', '汽车零部件', ' auto parts',
+    ' vehicle manufacturer', ' car maker', ' 汽车制造', ' car maker',
+    '摩托车', '电动车', '两轮车', 'OEM.*manufacturer']],
+  ['消费电子', [' consumer electronics', ' smartphone', '手机', ' home appliance', '家电',
+    'Wearable', 'tablets', 'TV', '显示屏', '智能家居', '智能穿戴',
+    '电子烟', '小家电', '厨房电器', '个人护理电器']],
+  ['海洋工程', ['shipbuilding', '造船', '船舶', '海洋工程', '海洋装备',
+    '마린', 'maritime', '海工', ' 조선', 'shipyard',
+    ' port equipment', '港口设备', '码头设备', '物流装备']],
+  ['航空航天', ['航空', '航空航天', 'aerospace', 'aviation', 'aircraft', ' UAV ', 'drone',
+    '飞机', '无人机', '卫星', '航天', '民用航空']],
+  ['美妆护肤', ['护肤', '化妆品', '美妆', '美容', '个人护理', 'skincare', 'cosmetics',
+    '有机护肤', '天然护肤', ' beauty product', ' beauty brand']],
 ];
 
 const COOPERATION_PATTERNS = [
@@ -852,21 +1249,33 @@ const NOISE_RE = [
   /stock market/, /IPO中止/, /証券/, /股价/, /株[javascript]/, /syariah/,
   /COVID/, /pandemic/, /感染/, /疫情/, /防疫/, /coronavirus/,
   /选举/, /election.*result/, /scandal/, /sex.*abuse/, /murder/, /fraud case/,
-  // 通用噪音
+  // ── 新闻/报道噪音 — 通用 ────────────────────────────────────────────────
   /Quote of the Day/, /今日の./, /오늘의/, /ngày.*trích dẫn/,
   /giá vàng/, /gold price/, / ценна/, /油价/, /xăng/, /石油価格/,
   /celebrity/, /star.*news/, /gossip/, /scandal.*update/, /fame.*shame/,
   /Sports.*News/, /politics.*news/, /entertainment.*news/, /lifestyle/,
   /美容/, /美妆/, /整形/, /护肤/, /化妆/, /韩流/, /K-POP/, /Kpop/,
   / тенге/, /円高/, /円安/, /人民元/, /USD/,
-  // 娱乐新闻噪音
+  // ── 新闻/报道噪音 — 越南 ───────────────────────────────────────────────
+  /vàng.*phục hồi/, /giá.*tuần/, /tỷ phú/, /bạc tỷ/, /nghìn tỷ/,
+  /lợi nhuận/, /doanh thu/, /tăng trưởng.*%/,
+  /giải thưởng/, /award.*honour/, /lần đầu tiên/, /đầu tiên/,
+  /bước đầu/, /ban đầu/, /sơ bộ/, /ban hành/,
+  /chứng khoán/, /cổ phiếu/, /thị trường chứng khoán/,
+  /ngân hàng.*tăng.*lãi/, /lãi suất.*tăng/,
+  /IPO.*tỷ/, /niêm yết/, /niêm yết/,
+  /đầu tư.*hơn.*tỷ/, /dự án.*tỷ đồng/,
+  // ── 新闻/报道噪音 — 日本 ───────────────────────────────────────────────
+  /覚書締結/, /連携.* 관한/, /press release/i,
+  /につい て/, /について$/, /^.*の.*について$/,
+  // ── 新闻/报道噪音 — 通用报道词 ─────────────────────────────────────────
+  /\(Dân trí\)/, /\(Reuters\)/, /\(AFP\)/, /\(AP\)/,
+  // ── 新闻/报道噪音 — 娱乐新闻噪音 ───────────────────────────────────────
   /藤原/, /張本/, /瀬戸/, /山下/, /BLACKPINK/, /森/, /出口/,
-  // 印度噪音
+  // ── 新闻/报道噪音 — 印度噪音 ───────────────────────────────────────────
   /\(.*Taylor Swift.*\)/, /Bill Gates.*Quote/, /Steve Jobs.*Quote/, /No matter.*people/,
   /Dogs can't digest/, /Harbhajan Singh/,
-  // 越南噪音
-  /vàng.*phục hồi/, /giá.*tuần/,
-  // 韩国噪音
+  // ── 新闻/报道噪音 — 韩国噪音 ───────────────────────────────────────────
   / 마스크/, /요소수/, /생필품/, /발표$/, /금리/, /환율/,
 ];
 
@@ -882,6 +1291,11 @@ const REGION_MAP = {
   vietnam: [
     ['vn-hanoi', ['Hanoi', '河内', '北宁', '北江', '海防', 'Northern Vietnam', 'Bac Ninh', 'Bac Giang', 'Vinh Phuc']],
     ['vn-hcmc', ['Ho Chi Minh', 'Saigon', '胡志明', '同奈', '平阳', '隆安', '南部', 'Southern Vietnam', 'Southeast', 'Vung Tau']],
+  ],
+  taiwan: [
+    ['tw-taipei', ['Taipei', '台北', '新北', '桃园', '基隆', '中国台湾'] ],
+    ['tw-hsinchu', ['Hsinchu', '新竹', '科学园区', 'Science Park'] ],
+    ['tw-kaohsiung', ['Kaohsiung', '高雄', '台南', '南台湾', 'Southern Taiwan'] ],
   ],
   malaysia: [
     ['my-kl', ['Kuala Lumpur', 'Selangor', '吉隆坡', '雪兰莪', 'Greater KL', 'Klang Valley']],
@@ -904,6 +1318,7 @@ const REGION_LABELS = {
   'my-kl': '吉隆坡雪兰莪', 'my-penang': '槟城', 'my-johor': '柔佛依斯干达',
   'th-bangkok': '曼谷大都会区', 'th-eea': '东部经济走廊',
   'kr-seoul': '首尔首都圈', 'kr-busan': '釜山岭南圈',
+  'tw-taipei': '中国台北新北桃园大都会', 'tw-hsinchu': '中国新竹科学园区', 'tw-kaohsiung': '中国高雄台南南台湾',
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1019,10 +1434,10 @@ function inferRegionLabel(regionId) {
 function inferCountryFromText(text) {
   text = text.substring(0, 400);
   const m = [
-    [['Japan', 'Japanese', 'Nippon', '東京'], 'japan'],
-    [['Korea', 'South Korea', 'Korean', 'Seoul', 'Busan'], 'south-korea'],
+    [['Japan', 'Japanese', 'Nippon', '東京', '日本'], 'japan'],
+    [['Korea', 'South Korea', 'Korean', 'Seoul', 'Busan', '한국'], 'south-korea'],
     [['Singapore', 'Singaporean'], 'singapore'],
-    [['Vietnam', 'Vietnamese', 'Hanoi', 'Ho Chi Minh', 'Saigon', 'Việt Nam'], 'vietnam'],
+    [['Vietnam', 'Vietnamese', 'Hanoi', 'Ho Chi Minh', 'Saigon', 'Việt Nam', 'Việt-Nam'], 'vietnam'],
     [['Indonesia', 'Indonesian', 'Jakarta', 'Bandung'], 'indonesia'],
     [['Malaysia', 'Malaysian', 'Kuala Lumpur', 'Penang'], 'malaysia'],
     [['Thailand', 'Thai', 'Bangkok', 'Krung Thep'], 'thailand'],
@@ -1032,11 +1447,39 @@ function inferCountryFromText(text) {
     [['Cambodia', 'Cambodian', 'Phnom Penh', 'Sihanouk'], 'cambodia'],
     [['Myanmar', 'Burma', 'Yangon', 'Mandalay'], 'myanmar'],
     [['Laos', 'Laotian', 'Vientiane'], 'laos'],
+    [['Taiwan', 'Taiwanese', '台北', '台灣', '中国台湾', 'Taiwan Strait', 'ROC'], 'taiwan'],
   ];
   for (const [[kw], id] of m) {
     if (matchAny(text, [kw])) return id;
   }
   return undefined;
+}
+
+// 必须有"中国"关键词才算有效商机（排除纯国内新闻）
+// 扩展了中国台湾/两岸贸易相关关键词
+const CHINA_KW = [
+  '中国', 'China', 'Chinese', 'Trung Quốc', 'Cina', 'Tiongkok',
+  '中国企业', '中国側', '中国侧', '中国企业', '中国製品',
+  '对中国', '中国への', '中国との', '中国向け', '中国市場',
+  '中国企业', '中国公司', '中国资本', 'Chinese partner', 'Chinese supplier',
+  'Chinese investor', 'China-Japan', 'China-ASEAN', 'China-India',
+  'China-Vietnam', 'China.*Vietnam', 'Vietnam.*China',
+  // 两岸/中国台湾相关
+  '中国大陆', '中国内陆', '中国厂商', '台商', '台资',
+  '两岸', '两岸贸易', '两岸经贸', 'cross-strait', 'ECFA',
+  '中国台湾.*中国', '中国.*中国台湾', 'Taiwan.*China', 'China.*Taiwan', 'Taiwan-China', '中国台湾',
+  // 韩-中贸易特有表达
+  '在中国的', '中国向', '对中国', '中国から', '중국에서',
+  '한중', '중한', '중한 무역', '한국-중국',
+  // 越南-中国
+  'việt-trung', 'Việt-Trung', 'Việt Nam-Trung Quốc',
+  // 印尼-中国
+  'Cina-Indonesia', 'Indonesia-Cina', 'Tiongkok-Indonesia',
+];
+
+function hasChinaConnection(title, desc) {
+  const text = (title + ' ' + desc).substring(0, 600);
+  return matchAny(text, CHINA_KW);
 }
 
 function isNoise(title, desc) {
@@ -1179,6 +1622,7 @@ async function fetchSource(source) {
     const results = [];
     for (const item of raw.slice(0, LIMIT_PER_SOURCE)) {
       if (isNoise(item.title, item.desc)) continue;
+      if (!hasChinaConnection(item.title, item.desc)) continue;
       const score = calcScore(item, source);
       if (score < source.threshold) continue;
 
@@ -1212,7 +1656,7 @@ async function fetchSource(source) {
         currency:        undefined,
         companyName:     source.name,
         companyNameEn:   undefined,
-        contactEmail:    'customer@zxqconsulting.com',
+        contactEmail:    'zxq@zxqconsulting.com',
         publishedAt,
         expiresAt:       expiresAt.toISOString(),
         status:          'active',
@@ -1232,7 +1676,7 @@ async function fetchSource(source) {
 
 // ── Main run ─────────────────────────────────────────────────────────────────
 async function run() {
-  log('========== AsiaBridge 采集器 v11 启动 ==========');
+  log('========== AsiaBridge 采集器 v13 启动 ==========');
   log(`Sources: ${SOURCES.length} configured | Dry: ${IS_DRY_RUN} | Filter: ${COUNTRY_FILTER || 'none'} | Limit: ${LIMIT_PER_SOURCE}/source`);
 
   // Run in waves of CONCURRENCY

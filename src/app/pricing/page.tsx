@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
-import { mockPricingPlans } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
 import FAQSection from '@/components/pricing/FAQSection';
+import fs from 'fs/promises';
+import path from 'path';
+import type { PricingPlan } from '@/types';
 
 const valueProps = [
   {
@@ -23,11 +25,21 @@ const valueProps = [
   {
     icon: '🤝',
     title: '精准匹配，高效对接',
-    desc: '按国家、区域、行业、预算等多维度筛选，快速找到匹配的合作方，不浪费任何沟通时间。',
+    desc: '按国家、区域，行业、预算等多维度筛选，快速找到匹配的合作方，不浪费任何沟通时间。',
   },
 ];
 
-function PricingCard({ plan }: { plan: typeof mockPricingPlans[0] }) {
+async function getPricingPlans(): Promise<PricingPlan[]> {
+  try {
+    const filePath = path.join(process.cwd(), 'public', 'data', 'pricing.json');
+    const content = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(content) as PricingPlan[];
+  } catch {
+    return [];
+  }
+}
+
+function PricingCard({ plan }: { plan: PricingPlan }) {
   return (
     <div
       className={cn(
@@ -104,7 +116,9 @@ function PricingCard({ plan }: { plan: typeof mockPricingPlans[0] }) {
   );
 }
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const plans = await getPricingPlans();
+
   return (
     <SiteLayout>
       <div className="bg-gradient-to-br from-blue-950 via-blue-900 to-blue-950 py-16 sm:py-20">
@@ -124,7 +138,7 @@ export default function PricingPage() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-12">
-          {mockPricingPlans.map((plan) => (
+          {plans.map((plan) => (
             <PricingCard key={plan.id} plan={plan} />
           ))}
         </div>

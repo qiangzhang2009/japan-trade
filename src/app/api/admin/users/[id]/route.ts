@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/session';
 import { updateUser, findUserById, safeUser, deleteUser } from '@/lib/auth';
-import { UserRole, UserStatus } from '@/lib/auth';
+import type { UserRole, UserStatus } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request);
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ user: safeUser(user) });
 }
 
-export async function PUT(request: NextRequest) {
+export async function PATCH(request: NextRequest) {
   const session = await getSessionFromRequest(request);
   if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: '无权限访问' }, { status: 403 });
@@ -29,8 +29,14 @@ export async function PUT(request: NextRequest) {
   const target = await findUserById(id);
   if (!target) return NextResponse.json({ error: '用户不存在' }, { status: 404 });
 
+  // Prevent admin from removing their own admin role
   if (session.userId === id && role && role !== 'admin') {
     return NextResponse.json({ error: '不能修改自己的管理员权限' }, { status: 400 });
+  }
+
+  // Prevent modifying the env-based admin
+  if (id === 'env-admin') {
+    return NextResponse.json({ error: '环境管理员账号不可修改' }, { status: 403 });
   }
 
   const updates: Record<string, unknown> = {};
@@ -62,6 +68,9 @@ export async function DELETE(request: NextRequest) {
   if (!id) return NextResponse.json({ error: '缺少用户ID' }, { status: 400 });
   if (session.userId === id) {
     return NextResponse.json({ error: '不能删除自己的账号' }, { status: 400 });
+  }
+  if (id === 'env-admin') {
+    return NextResponse.json({ error: '环境管理员账号不可删除' }, { status: 403 });
   }
   const ok = await deleteUser(id);
   if (!ok) return NextResponse.json({ error: '删除失败或用户不存在' }, { status: 404 });

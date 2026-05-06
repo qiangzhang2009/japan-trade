@@ -53,8 +53,7 @@ src/
 ├── lib/                  # 核心业务逻辑
 │   ├── auth.ts          # 用户 CRUD、密码哈希、角色管理
 │   ├── session.ts       # JWT 创建/验证、权限系统
-│   ├── dataService.ts   # 数据读取服务
-│   ├── mockData.ts      # 开发期 mock 数据
+│   ├── dataService.ts   # 数据读取服务（从 public/data/*.json 读取）
 │   └── utils.ts        # 工具函数
 ├── contexts/
 │   └── AuthContext.tsx  # React 认证上下文

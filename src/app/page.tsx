@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import SiteLayout from '@/components/layout/SiteLayout';
-import { getCountries, getOpportunities } from '@/lib/dataService';
+import { getCountries, getOpportunities, getSiteStats } from '@/lib/dataService';
 import { formatRelativeTime, getCountryFlag, getOpportunityTypeLabel, getCooperationTypeLabel, getTierLabel } from '@/lib/utils';
+
+export const revalidate = 3600; // ISR: re-generate at most every 1 hour
 
 function tierBorderColor(tier: 1 | 2 | 3): string {
   if (tier === 1) return 'border-amber-300 hover:border-amber-400';
@@ -338,18 +340,6 @@ function CTASection() {
       </div>
     </section>
   );
-}
-
-async function getSiteStats() {
-  const [countries, opportunities] = await Promise.all([
-    getCountries(),
-    getOpportunities(),
-  ]);
-  const activeCountries = new Set(opportunities.filter(o => o.status === 'active').map(o => o.country));
-  return {
-    activeCountriesCount: activeCountries.size,
-    opportunitiesCount: opportunities.filter(o => o.status === 'active').length,
-  };
 }
 
 export default async function HomePage() {

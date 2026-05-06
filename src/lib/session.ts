@@ -2,9 +2,19 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'asiabridge-jwt-secret-change-in-production-2024'
-);
+const JWT_SECRET = (() => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      'FATAL: JWT_SECRET environment variable is not set. ' +
+      'Please set it in .env.local (e.g. JWT_SECRET=$(openssl rand -hex 32))'
+    );
+  }
+  if (secret.length < 32) {
+    throw new Error('FATAL: JWT_SECRET must be at least 32 characters long.');
+  }
+  return new TextEncoder().encode(secret);
+})();
 const SESSION_COOKIE = 'asiabridge_session';
 const SESSION_DURATION = '7d';
 

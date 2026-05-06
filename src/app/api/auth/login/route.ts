@@ -27,12 +27,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '账号已被停用，请联系管理员' }, { status: 403 });
     }
 
-    // Hardcoded admin: also allow plaintext comparison for debugging
-    const isHardcodedAdmin = user.email.toLowerCase() === 'admin@asiabridge.com';
-    const isValid = isHardcodedAdmin
-      ? password === 'AsiaBridge2026!'
-      : verifyPassword(password, user.passwordHash);
-    console.log('[login] isHardcodedAdmin:', isHardcodedAdmin, '| password valid:', isValid);
+    const isValid = verifyPassword(password, user.passwordHash);
+    console.log('[login] email:', email, '| role:', user.role, '| status:', user.status, '| valid:', isValid);
     if (!isValid) {
       return NextResponse.json({ error: '邮箱或密码错误' }, { status: 401 });
     }

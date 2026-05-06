@@ -6,8 +6,8 @@ import SiteLayout from '@/components/layout/SiteLayout';
 import { getCountryById, getOpportunitiesByCountry } from '@/lib/dataService';
 import { formatRelativeTime, getOpportunityTypeLabel, getCooperationTypeLabel } from '@/lib/utils';
 
-export async function generateMetadata({ params }: { params: { country: string } }): Promise<Metadata> {
-  const country = await getCountryById(params.country);
+export async function generateMetadata({ params }: { params: Promise<{ country: string }> }): Promise<Metadata> {
+  const country = await getCountryById((await params).country);
   if (!country) return { title: '未找到市场' };
   return {
     title: `${country.nameZh} ${country.nameEn} — 出海通 AsiaBridge`,
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: { country: string }
 export const dynamic = 'force-dynamic';
 
 interface Props {
-  params: { country: string };
+  params: Promise<{ country: string }>;
 }
 
 export async function generateStaticParams() {
@@ -70,8 +70,8 @@ async function CountryHeroInner(props: { country: Country }) {
   );
 }
 
-export default async function CountryPage(props: Props) {
-  const countryId = props.params.country;
+export default async function CountryPageInner(props: Props) {
+  const countryId = (await props.params).country;
   const [country, opportunities] = await Promise.all([
     getCountryById(countryId),
     getOpportunitiesByCountry(countryId),

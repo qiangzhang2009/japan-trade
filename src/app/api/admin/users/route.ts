@@ -13,7 +13,9 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status');
   const search = searchParams.get('search');
 
-  let users = (await getAllUsers()).map(safeUser);
+  const allUsers = (await getAllUsers()).map(safeUser);
+
+  let users = allUsers;
 
   if (role && role !== 'all') {
     users = users.filter((u) => u.role === role);
@@ -33,10 +35,8 @@ export async function GET(request: NextRequest) {
 
   users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const allUsers = await getAllUsers();
-  const total = allUsers.length;
   const stats = {
-    total,
+    total: allUsers.length,
     admins: allUsers.filter((u) => u.role === 'admin').length,
     premium: allUsers.filter((u) => u.role === 'premium').length,
     members: allUsers.filter((u) => u.role === 'member').length,
@@ -45,5 +45,13 @@ export async function GET(request: NextRequest) {
     suspended: allUsers.filter((u) => u.status === 'suspended').length,
   };
 
-  return NextResponse.json({ users, stats, total });
+  return NextResponse.json({ users, stats, total: users.length });
+}
+
+export async function POST(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '无权限访问' }, { status: 403 });
+  }
+  return NextResponse.json({ error: '请使用注册页面创建用户' }, { status: 405 });
 }
