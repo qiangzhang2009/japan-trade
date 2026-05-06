@@ -2,19 +2,6 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 
-const JWT_SECRET = (() => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error(
-      'FATAL: JWT_SECRET environment variable is not set. ' +
-      'Please set it in .env.local (e.g. JWT_SECRET=$(openssl rand -hex 32))'
-    );
-  }
-  if (secret.length < 32) {
-    throw new Error('FATAL: JWT_SECRET must be at least 32 characters long.');
-  }
-  return new TextEncoder().encode(secret);
-})();
 const SESSION_COOKIE = 'asiabridge_session';
 const SESSION_DURATION = '7d';
 
@@ -25,17 +12,29 @@ export interface SessionPayload {
   exp?: number;
 }
 
+// Lazy initialization — only evaluates at runtime, not at module load / build time.
+// Returns null if JWT_SECRET is not set, so auth fails gracefully without crashing the build.
+function getJwtSecret(): Uint8Array | null {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) return null;
+  return new TextEncoder().encode(secret);
+}
+
 export async function createSession(payload: Omit<SessionPayload, 'exp'>): Promise<string> {
+  const secret = getJwtSecret();
+  if (!secret) throw new Error('JWT_SECRET is not configured');
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(SESSION_DURATION)
-    .sign(JWT_SECRET);
+    .sign(secret);
 }
 
 export async function verifySession(token: string): Promise<SessionPayload | null> {
+  const secret = getJwtSecret();
+  if (!secret) return null; // safe fallback — unauthenticated
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, secret);
     return payload as unknown as SessionPayload;
   } catch {
     return null;
