@@ -6,7 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "collect": "node scripts/collector.js",
+    "collect:all": "node scripts/collect-all.js",
+    "collect:kr": "node scripts/narajangteo.js",
+    "collect:tw": "node scripts/twtender.js",
+    "collect:vn": "node scripts/vnfta.js",
+    "collect:stats": "node scripts/tradestats.js",
+    "collect:hf": "node scripts/hfdatasets.js",
+    "collect:c4a": "python3 scripts/crawl4ai_scraper.py"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

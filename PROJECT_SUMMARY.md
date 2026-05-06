@@ -60,7 +60,14 @@ src/
 ├── types/
 │   └── index.ts        # 共享 TypeScript 类型
 scripts/
-├── collector.js         # 数据采集器 (1320+ 行)
+├── collector.js         # 数据采集器 v14 (2200+ 行, 44个数据源, 多维度增强评分)
+├── collect-all.js      # 全量采集调度器 v14 (支持Node+Python)
+├── narajangteo.js      # 韩国国家招标门户爬虫 (g2b.go.kr)
+├── twtender.js        # 中国台湾政府采购招标采集器
+├── vnfta.js           # 越南FTA关税及贸易促进爬虫
+├── tradestats.js      # OEC/WB 贸易统计数据采集器
+├── hfdatasets.js      # HuggingFace 贸易/商机数据集采集器
+├── crawl4ai_scraper.py # Crawl4AI 高级HTML解析 (Python)
 ├── cleanAndSeedData.js  # 数据清洗
 ├── test-feeds.js       # Feed 测试
 └── debug-keywords.js   # 关键词调试
@@ -241,37 +248,93 @@ npx vercel --prod
 
 ---
 
-## 三、数据采集系统架构
+## 三、数据采集系统架构 v14
 
-### 3.1 采集器设计 (`scripts/collector.js`)
+### 3.1 多级采集架构
 
-**架构：**
-- 26 个数据源（RSS feeds + HTML 页面）
-- 多语言关键词匹配（中、日、韩、越、泰、印尼、英）
-- 评分算法（bizKW + contextKW + industryKW）
-- 去重（基于标题）
-- 去噪（政治、娱乐、股票新闻过滤）
-- 写盘到 `public/data/opportunities.json`
+**架构演进：**
+- v12: 单一采集器，31个RSS/HTML数据源
+- v13: 多级采集架构，44+数据源 + 5个专用采集器
+- **v14: 多维度增强评分系统，替代纯关键词过滤**
 
-**数据源分类：**
-1. **RSS/Atom feeds** — JETRO, J-CAST, NHK, VnExpress, DanTri, Straits Times 等
-2. **政府门户 HTML 抓取** — KOTRA, BOI Thailand, MATRADE, BKPM Indonesia, METI, DPIIT India 等
+**模块组成：**
+1. `collector.js` — 核心采集器（RSS + HTML，44个数据源，多维度增强评分）
+2. `narajangteo.js` — 韩国国家招标门户（g2b.go.kr）
+3. `twtender.js` — 中国台湾政府采购招标（web.pcc.gov.tw）
+4. `vnfta.js` — 越南FTA关税及贸易促进
+5. `tradestats.js` — OEC/WB 贸易统计数据（背景参考）
+6. `collect-all.js` — 统一调度器（串行/并行模式）
+7. `hfdatasets.js` — HuggingFace 数据集采集（分类规则生成）
+8. `crawl4ai_scraper.py` — Crawl4AI 高级爬虫（可选）
 
-**关键词系统：**
-- 商业关键词（寻求、采购、投资、合资、代理、OEM...）
-- 噪音过滤关键词（股价、票房、选举、选举...）
-- 国家/地区关键词（城市名、经济走廊名称...）
+### 3.2 核心采集器设计 (`scripts/collector.js`)
 
-**调度方式：**
-- **开发**：手动 `node scripts/collector.js`
-- **生产**：Vercel Cron Jobs 每日 02:00 UTC 触发 `/api/cron/collect`
-- **流程**：cron API → spawn node collector.js → 写盘 → Vercel ISR 可选触发
+**v14 多维度增强评分系统（8信号框架）：**
+
+| 信号维度 | 权重 | 说明 |
+|---------|------|------|
+| EXPLICIT_BUSINESS_INTENT | +3 | 寻求合作/采购/合资/代理等明确意向词 |
+| PROCUREMENT_TENDER | +2 | 招标/投标/采购/RFP/RFQ 等 |
+| CHINA_CONNECTION | +1~2 | 中国/Chinese/两岸/ECFA 等（必需基线） |
+| ASIA_BILATERAL_TRADE | +1 | RCEP/ASEAN/双边贸易/供应链转移 |
+| HIGH_VALUE_INDUSTRY | +1 | 半导体/EV/医疗/机器人等高价值行业 |
+| MONEY_AMOUNT | +0.5 | 涉及金额/预算/USD 等 |
+| ORG_TYPE | +0.5 | 明确组织类型（公司/政府/商会） |
+| ACTION_VERB | +1 | 合作/投资/M&A 等行动词 |
+| SOURCE_BIZ_KW | +2 | 来源特定业务关键词命中 |
+| SOURCE_CONTEXT_KW | +1 | 来源特定背景关键词命中（≥2次） |
+| SOURCE_TIER | +0.5~1 | 数据源等级（T1=+1, T2=+0.5） |
+
+**国家质量权重：**
+- 日本、韩国、新加坡: 权重 0.9-1.0（高收入市场，精密制造）
+- 越南、马来西亚、泰国、中国台湾: 权重 0.85-0.95（制造业崛起+两岸贸易）
+- 印尼、菲律宾、印度: 权重 0.7-0.8（新兴市场）
+- 巴基斯坦、柬埔寨、老挝: 权重 0.5-0.6（基础设施+资源）
+
+**商机关联分类器（替代纯关键词过滤）：**
+- POSITIVE: 必须有中国连接 + （商业意图 OR 招标 OR 行动词 OR T1来源）
+- NEGATIVE: 无中国连接或无任何业务信号
+
+**输出增强字段：**
+- `score`: 综合评分（0-10，含国家权重）
+- `scoreBreakdown`: 各信号命中详情
+- `scoreConfidence`: 置信度标签（HIGH/MEDIUM/LOW/NONE）
+- `isPremium`: 智能判断（综合评分≥7 或 强意图+中国连接）
+- `classification`: 商机关联分类原因
+- `amount` / `currency`: 自动提取的金额信息
+
+**数据源分类（v14）：**
+1. **RSS/Atom feeds** — JETRO, J-CAST, NHK, VnExpress, DanTri, Straits Times, Nikkei Asia, Economist Asia 等
+2. **政府门户 HTML 抓取** — KOTRA, BOI Thailand, MATRADE, BKPM Indonesia, METI, DPIIT India, Nara Jangteo, PEZA 等
+3. **政府招标平台** — g2b.go.kr 韩国国家招标, web.pcc.gov.tw 台湾采购, fta.moit.gov.vn 越南FTA
+4. **贸易统计 API** — OEC, World Bank, ITC Trade Map（背景参考数据）
+
+**v14 增强（Crawl4AI + HuggingFace）：**
+- `scripts/crawl4ai_scraper.py` — 使用 Crawl4AI (65k GitHub stars) 高级爬虫框架，
+  替代 cheerio 处理 SPA/JS-heavy 页面，支持代理轮换和 LLM 集成
+- `scripts/hfdatasets.js` — 从 HuggingFace 下载贸易/商机相关数据集（6个数据集，
+  总计约40000+条），包括中国招标公告、贸易新闻去重、行业分类等
+- 生成的 `classifier_rules.json` 和 `annotation_guidelines.json` 已直接集成到
+  `collector.js` 的多维度评分系统中
+
+### 3.3 独立采集模块
+
+| 模块 | 脚本 | 说明 |
+|------|------|------|
+| 韩国招标 | `narajangteo.js` | g2b.go.kr + data.go.kr |
+| 台湾采购 | `twtender.js` | web.pcc.gov.tw + data.gov.tw |
+| 越南FTA | `vnfta.js` | fta.moit.gov.vn + customs.gov.vn |
+| 贸易统计 | `tradestats.js` | OEC + World Bank + ITC |
+| HF数据集 | `hfdatasets.js` | HuggingFace 贸易/商机数据集 |
+| Crawl4AI | `crawl4ai_scraper.py` | Python 高级HTML解析（可选） |
 
 **重要经验：**
 1. cheerio/axios 是可选依赖 — `try/catch` 降级处理
 2. 采集的数据直接写 `public/data/` 目录 — 无需 API 层，Next.js 直接读文件系统
 3. `IS_DRY_RUN` 模式 — 测试时不影响生产数据
-4. 评分 < 6 的商机不标记为 Premium — 控制质量门槛
+4. **v14: 多维度评分替代简单阈值** — 8信号框架 + 国家权重 + 商机关联分类器
+5. 台湾/香港/澳门关键词在 CHINA_KW 中扩展 — 捕获两岸四地贸易商机
+6. **v14: amount/currency 字段可被前端直接渲染** — 无需后处理
 
 ---
 

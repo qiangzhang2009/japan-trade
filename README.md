@@ -37,18 +37,117 @@ npm start
 
 ## 数据采集
 
+### 采集器架构 v14
+
+系统采用多级采集架构：
+
+| 模块 | 脚本 | 数据类型 | 采集频率 |
+|------|------|---------|---------|
+| 基础采集器 | `collector.js` | RSS + HTML（44个数据源，多维度增强评分） | 每小时 |
+| 韩国招标 | `narajangteo.js` | g2b.go.kr 政府招标公告 | 每6小时 |
+| 中国台湾招标 | `twtender.js` | web.pcc.gov.tw 政府采购 | 每6小时 |
+| 越南FTA | `vnfta.js` | FTA关税 + 贸易促进数据 | 每日 |
+| 贸易统计 | `tradestats.js` | OEC/WB 贸易参考数据 | 每日 |
+| 全量调度 | `collect-all.js` | 统一调度所有模块 | 按需 |
+
 ### 运行采集器
 
 ```bash
-# 全量采集（抓取所有数据源）
+# 基础采集（RSS+HTML，44个数据源）
 node scripts/collector.js
-
-# 预览模式（不写入文件）
 node scripts/collector.js --dry-run
+node scripts/collector.js --country=japan --limit=5
 
-# 仅采集特定国家
-node scripts/collector.js --country=vietnam
+# 全量采集（所有模块串行运行）
+node scripts/collect-all.js
+node scripts/collect-all.js --dry-run
+node scripts/collect-all.js --fast  # 并行模式，更快
+node scripts/collect-all.js --module=narajangteo  # 只运行指定模块
+
+# 单独模块
+npm run collect:kr   # 韩国国家招标
+npm run collect:tw    # 中国台湾政府采购
+npm run collect:vn    # 越南FTA关税
+npm run collect:stats # 贸易统计数据
 ```
+
+### 当前支持的数据源（v14，共44个）
+
+**TIER 1 — 高优先级**
+
+| 来源 | 国家 | 类型 |
+|------|------|------|
+| JETRO 日本贸易振兴机构 (×3) | 日本 | RSS+HTML |
+| Nara Jangteo 国家招标门户 | 韩国 | HTML (g2b.go.kr) |
+| KOTRA 全球采购商数据库 | 韩国 | RSS |
+| MOIT 越南工贸部 | 越南 | HTML |
+| VietnamNet 经济版 | 越南 | RSS |
+| DanTri 今日电子报 | 越南 | RSS |
+| FTA 关税门户 (RCEP/AANZFTA/EVFTA) | 越南 | HTML |
+| Straits Times | 新加坡 | RSS |
+| ESG 企业发展局 | 新加坡 | HTML |
+| MATRADE 对外贸易发展局 (×2) | 马来西亚 | HTML |
+
+**TIER 2 — 中优先级**
+
+| 来源 | 国家 | 类型 |
+|------|------|------|
+| BOI Thailand 投资促进委员会 | 泰国 | RSS |
+| Bangkok Post | 泰国 | RSS |
+| PEZA 经济特区 + 投资公告 | 菲律宾 | HTML |
+| Philstar | 菲律宾 | RSS |
+| BKPM 投资统筹机构 | 印尼 | HTML |
+| Detik Finance | 印尼 | RSS |
+| 中国台湾政府采购 (web.pcc.gov.tw) | 中国台湾 | HTML |
+
+**TIER 3 — 参考级**
+
+| 来源 | 国家 | 类型 |
+|------|------|------|
+| BOI Pakistan | 巴基斯坦 | HTML |
+| MoneyControl India | 印度 | RSS |
+| Livemint | 印度 | RSS |
+| CCI Cambodia | 柬埔寨 | HTML |
+| DICA Myanmar | 缅甸 | HTML |
+| PCI Laos | 老挝 | HTML |
+
+**泛亚洲 RSS**
+
+| 来源 | 类型 |
+|------|------|
+| Nikkei Asia | RSS |
+| Economist Asia | RSS |
+| CNBC Asia Pacific | RSS |
+| BBC World Asia | RSS |
+| Mothership Singapore | RSS |
+| Splash247 Maritime | RSS |
+
+> 数据源会因目标网站政策变化而失效，建议定期运行 `--dry-run` 测试。
+
+### HuggingFace 数据集
+
+HuggingFace 提供多个与贸易/商机相关的免费数据集，可用于训练 NLP 商机关联分类模型：
+
+```bash
+# 采集 HuggingFace 数据集
+node scripts/hfdatasets.js
+node scripts/hfdatasets.js --dry-run
+node scripts/hfdatasets.js --dataset=bid  # 只下载招标数据集
+
+# 安装 Crawl4AI（可选，用于高级 HTML 解析）
+pip install crawl4ai
+python3 scripts/crawl4ai_scraper.py --dry-run
+```
+
+**集成的数据集：**
+
+| 数据集 | 规模 | 用途 | 相关度 |
+|--------|------|------|--------|
+| Qiaowenshu/bid-announcement-zh-v1.0 | 2000条 | 训练中文商机关联分类模型 | ⭐⭐⭐ 高 |
+| combatsolutions/tender_dataset | ~1000条 | 训练招标行业分类模型 | ⭐⭐ 中 |
+| lyutovad/TradeNewsEventDedup | 17566对 | 过滤重复贸易新闻 | ⭐⭐ 中 |
+| lyutovad/TradeNewsSum | 59000对 | 训练翻译/摘要模型 | ⭐ 低 |
+| electricsheepasia/asia-economic-indicators-all | 10986条 | 贸易流向分析参考 | ⭐⭐ 中 |
 
 ### 定时采集（Linux/Mac crontab）
 
@@ -56,11 +155,11 @@ node scripts/collector.js --country=vietnam
 # 编辑 crontab
 crontab -e
 
-# 每6小时执行一次（推荐）
-0 */6 * * * cd /path/to/中国日本经贸网站 && node scripts/collector.js >> logs/collector.log 2>&1
+# 每6小时执行一次全量采集（推荐）
+0 */6 * * * cd /path/to/中国日本经贸网站 && node scripts/collect-all.js >> logs/collect-all.log 2>&1
 
-# 每天凌晨2点执行
-0 2 * * * cd /path/to/中国日本经贸网站 && node scripts/collector.js >> logs/collector.log 2>&1
+# 每小时执行基础采集 (v14 多维度增强评分)
+0 * * * * cd /path/to/中国日本经贸网站 && node scripts/collector.js >> logs/collector.log 2>&1
 ```
 
 ### 定时采集（Vercel Cron）
@@ -68,20 +167,6 @@ crontab -e
 1. 在 `vercel.json` 中配置 cron job（已预设）
 2. 设置环境变量 `CRON_SECRET` 和 `VERCEL_REVALIDATE_HOOK`
 3. 采集完成后自动触发 ISR 页面再生成
-
-### 当前支持的数据源（2026-03 实测可用）
-
-| 来源 | 国家 | 频率 |
-|------|------|------|
-| JETRO 日本贸易振兴机构 | 日本 | 实时 |
-| VietnamNet 经济版 | 越南 | 活跃 |
-| DanTri 今日电子报 | 越南 | 活跃 |
-| MoneyControl India | 印度 | 每日 |
-| The Star Malaysia | 马来西亚 | 每日 |
-| Bangkok Post | 泰国 | 每日 |
-| BBC World Asia | 泛亚洲 | 每日 |
-
-> 数据源会因目标网站政策变化而失效，建议定期运行 `--dry-run` 测试。
 
 ## 环境变量
 

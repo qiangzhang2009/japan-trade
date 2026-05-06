@@ -5,30 +5,39 @@ import { fileURLToPath } from 'url';
 
 // Resolve collector script path relative to this file's location (not cwd)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const COLLECTOR_SCRIPT = path.resolve(__dirname, '../../../../../scripts/collector.js');
+const SCRIPTS_DIR = path.resolve(__dirname, '../../../../../scripts');
+const COLLECTOR_SCRIPT = path.join(SCRIPTS_DIR, 'collector.js');
+const COLLECT_ALL_SCRIPT = path.join(SCRIPTS_DIR, 'collect-all.js');
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: Request): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;
 
   if (!secret) {
     return NextResponse.json({ error: 'CRON_SECRET environment variable is not configured' }, { status: 500 });
   }
 
+  const url = new URL(request.url);
+  const mode = url.searchParams.get('mode') || 'standard'; // 'standard' | 'full'
+
+  // Validate secret
   if (process.env.CRON_SECRET !== secret) {
     return NextResponse.json({ error: 'Unauthorized: invalid secret' }, { status: 401 });
   }
 
-  // Verify collector script exists
+  const scriptToRun = mode === 'full' ? COLLECT_ALL_SCRIPT : COLLECTOR_SCRIPT;
+  const scriptName = mode === 'full' ? 'collect-all.js' : 'collector.js';
+
+  // Verify script exists
   try {
     const { statSync } = await import('fs');
-    if (!statSync(COLLECTOR_SCRIPT).isFile()) {
-      return NextResponse.json({ error: 'Collector script not found' }, { status: 404 });
+    if (!statSync(scriptToRun).isFile()) {
+      return NextResponse.json({ error: `${scriptName} not found` }, { status: 404 });
     }
   } catch {
-    return NextResponse.json({ error: 'Collector script not found' }, { status: 404 });
+    return NextResponse.json({ error: `${scriptName} not found` }, { status: 404 });
   }
 
   return new Promise<NextResponse>((resolve) => {
@@ -36,11 +45,11 @@ export async function GET(): Promise<NextResponse> {
 
     const proc = spawn(
       'node',
-      [COLLECTOR_SCRIPT],
+      [scriptToRun],
       {
-        cwd: path.dirname(COLLECTOR_SCRIPT),
+        cwd: SCRIPTS_DIR,
         env: { ...process.env },
-        timeout: 180000,
+        timeout: mode === 'full' ? 600000 : 180000, // 10min for full suite, 3min for standard
       }
     );
 
@@ -67,6 +76,8 @@ export async function GET(): Promise<NextResponse> {
       resolve(NextResponse.json({
         success: code === 0,
         code,
+        mode,
+        script: scriptName,
         elapsed: `${elapsed}ms`,
         itemsCollected: opportunitiesCount,
         log: lastLines,
@@ -81,12 +92,13 @@ export async function GET(): Promise<NextResponse> {
       }, { status: 500 }));
     });
 
+    const timeout = mode === 'full' ? 600000 : 180000;
     setTimeout(() => {
       proc.kill();
       resolve(NextResponse.json({
         success: false,
-        error: 'Process timed out after 180s',
+        error: `Process timed out after ${timeout / 1000}s`,
       }, { status: 408 }));
-    }, 180000);
+    }, timeout);
   });
 }

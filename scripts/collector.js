@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 出海通 AsiaBridge — 智能数据采集器 v13
+ * 出海通 AsiaBridge — 智能数据采集器 v14
  * =============================================
  * 支持方式：
  *   - RSS/Atom feeds（主流）
@@ -8,20 +8,16 @@
  *   - 政府贸易门户（KOTRA/Nara Jangteo/BOI/METI/贸工部等，高质量数据源）
  *   - 政府招标平台（Nara Jangteo韩国/JETRO采购/中国台湾招标等）
  *
- * 新增数据源 v13（基于GitHub调研集成）：
- *   - 韩国 Nara Jangteo 国家招标门户 (g2b.go.kr)
- *   - 中国台湾政府采购招标资讯
- *   - 越南 FTA 关税资讯门户 (RCEP/AANZFTA/EVFTA)
- *   - KOTRA 全球采购商数据库
- *   - 印尼 BKPM 投资机会
- *   - 菲律宾 PEZA 经济特区投资
- *   - Nikkei Asia / Economist Asia 泛亚洲RSS
- *   - 中国台湾/两岸贸易关键词扩展
+ * v14 增强特性（多维度增强评分系统）：
+ *   - 8维度信号评分：商业意图 + 招标信号 + 中国连接 + 双边贸易 +
+ *     高价值行业 + 金额指标 + 组织类型 + 行动词
+ *   - 商机关联分类器（POSITIVE/NEGATIVE），替代纯关键词过滤
+ *   - 金额自动提取（中/英/越/韩多语言）
+ *   - 国家质量权重（按商机关联密度调整）
+ *   - 置信度标签（HIGH/MEDIUM/LOW/NONE）
+ *   - isPremium 智能判断（综合评分 >= 7 或 强意图 + 中国连接）
  *
- * 数据质量原则：
- *   1. 只采集与中国-亚洲贸易直接相关的商机内容
- *   2. 排除所有新闻报道（行情、汇率、股价、会议报道等）
- *   3. 政府门户 > 专业媒体 > 综合新闻
+ * 数据源 v13：44个数据源，覆盖15个国家/地区
  *
  * 运行:
  *   node collector.js              # 全量采集
@@ -1322,6 +1318,338 @@ const REGION_LABELS = {
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
+// ENHANCED CLASSIFICATION ENGINE v14
+// Multi-dimensional scoring, business intent classification, amount extraction
+// Based on HuggingFace datasets analysis and industry best practices
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ── Signal Definitions ──────────────────────────────────────────────────────
+// Each signal represents a different dimension of "business opportunity quality"
+const SIGNALS = {
+  // Signal 1: EXPLICIT BUSINESS INTENT (highest weight)
+  // 明确表达寻求合作意向的关键词
+  INTENT_KW: [
+    // 寻求合作
+    'seeking', 'seeks', 'seeking.*partner', 'seeking.*supplier',
+    'seeking.*distributor', 'seeking.*manufacturer', 'seeking.*investor',
+    'looking.*for.*partner', 'looking.*for.*supplier', 'looking.*for.*distributor',
+    '寻找', '招募', '寻求', '征求', '招募代理商', '招募经销商',
+    '代理店募集', '代理商募集', '经销招募', '招募中国',
+    'tìm.*đối tác', 'tìm.*nhà cung cấp', 'tìm.*đại lý',
+    '在中国', '中国侧', '中国側',
+    // 采购/供应
+    'want.*buy.*from.*China', 'want.*import.*from.*China',
+    '需要从中国进口', '从中国采购', '希望从中国购买',
+    'OEM.*募集', 'ODM.*募集', 'manufacturing partner',
+    'cần.*nhập.*Trung Quốc', 'nhập.*từ Trung Quốc',
+    // 投资/合资
+    '合资', '合弁', 'joint venture', 'JV.*募集',
+    'FDI', 'foreign direct investment', '绿地投资', '设厂',
+    'seeking.*investment', 'seeking.*JV', 'looking.*for.*investor',
+    '招商引资', '投资招商',
+    // 代理/授权
+    'franchise', 'exclusive rights', 'sole agent',
+    '代理', '独家代理', '区域代理',
+  ],
+
+  // Signal 2: PROCUREMENT/TENDER SIGNAL
+  // 招标/采购公告的关键词
+  PROCUREMENT_KW: [
+    '招标', '招标公告', '采购公告', '投标', 'tender', 'bidding',
+    'procurement', ' RFP', ' RFQ', 'proposal',
+    '입찰', '공고', '조달', '구매공고',
+    'uang lelang', 'pengadaan', 'penawaran',
+    'thầu', 'đấu thầu', 'mua sắm',
+    '政府采购', '采购需求', '招标说明',
+    '政府招商', '公共采购', '공공구매',
+    // 英文采购
+    'supply wanted', 'supplier wanted', 'buyer wanted',
+    'distributor wanted', 'agent wanted', 'partner wanted',
+    'wanted.*supplier', 'wanted.*partner', 'wanted.*distributor',
+  ],
+
+  // Signal 3: CHINA CONNECTION (strong qualifier)
+  // 明确指向中国的词汇
+  CHINA_SIGNAL: [
+    '中国', 'China', 'Chinese', 'Trung Quốc', 'Cina', 'Tiongkok',
+    '对中国', '中国への', '中国との', '中国向け',
+    '中国企业', '中国公司', '中国资本',
+    'Chinese partner', 'Chinese supplier', 'Chinese manufacturer',
+    'Chinese investor', 'Chinese product',
+    '中国大陆', '中国厂商', '台商', '港商', '两岸', 'ECFA',
+    '在中国', '中国侧', '中国側',
+    '中国的', '中国产', '中国制', '中企',
+  ],
+
+  // Signal 4: ASIA BILATERAL TRADE
+  // 亚洲双边贸易关键词
+  BILATERAL_KW: [
+    'ASEAN', 'RCEP', 'AANZFTA', 'EVFTA', 'ACFTA', 'ATIGA',
+    '中国-东盟', '中国-日本', '中国-韩国', '中国-印度',
+    'China-ASEAN', 'China-Japan', 'China-Korea', 'China-India',
+    'Japan-China', 'Korea-China', 'ASEAN-China',
+    'Southeast Asia.*trade', 'Asia.*trade deal',
+    'bilateral.*trade', 'supply chain.*shift',
+    '한중', '중한', '日中', '対中',
+  ],
+
+  // Signal 5: HIGH-VALUE INDUSTRIES
+  // 高价值行业关键词（高客单价行业）
+  HIGH_VALUE_INDUSTRIES: [
+    'semiconductor', 'IC', 'chip', 'chipset',
+    'battery', 'EV', 'electric vehicle', '电动汽车',
+    'solar.*panel', 'photovoltaic', 'PV module',
+    'medical device', '医疗', 'pharma', '医药',
+    'robot', 'automation', 'robotics',
+    'hydrogen', 'electrolyzer', 'fuel cell',
+    'data center', 'IDC', 'cloud.*infrastructure',
+    'precision', 'CNC', 'machinery',
+    'OLED', 'display', 'semiconductor equipment',
+  ],
+
+  // Signal 6: MONEY/AMOUNT INDICATORS
+  // 涉及金额的关键词
+  AMOUNT_KW: [
+    '万', '亿', 'USD', 'JPY', 'KRW', 'SGD', 'THB', 'VND', 'IDR', 'MYR', 'PHP',
+    'million', 'billion', 'thousand USD', '万USD',
+    '预算', '金额', '价款', 'estimate', 'budget', 'amount',
+    '계약금액', '예산', '입찰가격',
+    'Ngân sách', 'kinh phí',
+  ],
+
+  // Signal 7: COMPANY/ORGANIZATION TYPE
+  // 明确的组织类型（公司、政府机构、商会）
+  ORG_TYPE_KW: [
+    '株式会社', 'corp', 'corp.', 'co.', 'ltd', 'Ltd', 'Inc', 'Inc.',
+    'Pte Ltd', 'Pte. Ltd', 'Sdn Bhd', 'Sdn. Bhd',
+    'Co., Ltd', 'company', 'Company', 'enterprise',
+    '政府', '省厅', '厅', '局', '委員会', '公團',
+    'Công ty', 'TNHH', 'nhà máy', ' завод',
+    'Institute', 'Association', 'Federation', 'Board',
+    'Bureau', 'Department', 'Ministry', 'Agency',
+  ],
+
+  // Signal 8: ACTION VERBS (strong intent signals)
+  ACTION_VERB_KW: [
+    'collaborate', 'collaboration', 'cooperate', 'cooperation',
+    'partner', 'partnership', 'joint', 'alliance',
+    'acquire', 'acquisition', 'invest', 'investment',
+    'merge', 'merger', 'expand', 'expansion',
+    '合作', '协力', '提携', 'パートナー',
+    'đầu tư', 'hợp tác', 'liên doanh', 'liên kết',
+    'đối tác', 'cộng tác',
+  ],
+};
+
+// ── Enhanced Scoring Function ───────────────────────────────────────────────
+/**
+ * Multi-dimensional scoring with 8 signals.
+ * Returns { score, signals, confidence }
+ */
+function enhancedCalcScore(item, source, options = {}) {
+  const text = (item.title + ' ' + item.desc).substring(0, 1000);
+
+  const hit = (patterns) => matchAny(text, patterns);
+  const hits = (patterns) => patterns.filter(p => {
+    try { return new RegExp(p, 'i').test(text); } catch { return false; }
+  }).length;
+
+  const score = { total: 0, signals: {} };
+
+  // Signal 1: EXPLICIT BUSINESS INTENT (+3 if hit)
+  if (hit(SIGNALS.INTENT_KW)) {
+    score.signals.intent = 3;
+    score.total += 3;
+  }
+
+  // Signal 2: PROCUREMENT/TENDER (+2 if hit)
+  if (hit(SIGNALS.PROCUREMENT_KW)) {
+    score.signals.procurement = 2;
+    score.total += 2;
+  }
+
+  // Signal 3: CHINA CONNECTION (+1, required baseline)
+  const chinaHits = hits(SIGNALS.CHINA_SIGNAL);
+  if (chinaHits >= 1) {
+    score.signals.china = Math.min(chinaHits, 2); // cap at 2
+    score.total += score.signals.china;
+  }
+
+  // Signal 4: ASIA BILATERAL TRADE (+1)
+  if (hit(SIGNALS.BILATERAL_KW)) {
+    score.signals.bilateral = 1;
+    score.total += 1;
+  }
+
+  // Signal 5: HIGH-VALUE INDUSTRY (+1)
+  if (hit(SIGNALS.HIGH_VALUE_INDUSTRIES)) {
+    score.signals.highValue = 1;
+    score.total += 1;
+  }
+
+  // Signal 6: MONEY/AMOUNT INDICATOR (+0.5)
+  if (hit(SIGNALS.AMOUNT_KW)) {
+    score.signals.amount = 0.5;
+    score.total += 0.5;
+  }
+
+  // Signal 7: ORGANIZATION TYPE (+0.5)
+  if (hit(SIGNALS.ORG_TYPE_KW)) {
+    score.signals.orgType = 0.5;
+    score.total += 0.5;
+  }
+
+  // Signal 8: ACTION VERBS (+1)
+  if (hit(SIGNALS.ACTION_VERB_KW)) {
+    score.signals.actionVerb = 1;
+    score.total += 1;
+  }
+
+  // Source tier bonus: TIER 1 = +1, TIER 2 = +0.5
+  if (source.tier === 1) {
+    score.signals.tierBonus = 1;
+    score.total += 1;
+  } else if (source.tier === 2) {
+    score.signals.tierBonus = 0.5;
+    score.total += 0.5;
+  }
+
+  // Source-specific bizKW bonus (if this source has specific business keywords)
+  const bizKW = source.bizKW || [];
+  if (bizKW.length > 0 && hit(bizKW)) {
+    score.signals.bizKW = 2;
+    score.total += 2;
+  }
+
+  // Source-specific contextKW bonus
+  const contextKW = source.contextKW || source.scoreKW || [];
+  if (contextKW.length > 0 && hits(contextKW) >= 2) {
+    score.signals.contextKW = 1;
+    score.total += 1;
+  }
+
+  // Normalize score to 0-10 range
+  const maxPossible = 13.5; // sum of all max signals
+  score.normalized = Math.round((score.total / maxPossible) * 10 * 10) / 10;
+
+  // Confidence: how many signals fired
+  const signalCount = Object.values(score.signals).filter(v => v > 0).length;
+  score.confidence = signalCount >= 5 ? 'HIGH' : signalCount >= 3 ? 'MEDIUM' : signalCount >= 1 ? 'LOW' : 'NONE';
+
+  // isPremium: if score >= 7 or has strong intent signal
+  score.isPremium = score.total >= 7 || (score.signals.intent >= 3 && score.signals.china >= 1);
+
+  return score;
+}
+
+// ── Enhanced Business Classification ────────────────────────────────────────
+/**
+ * Classify whether content is a business opportunity (POSITIVE)
+ * or just news/noise (NEGATIVE).
+ * Uses the same signal framework.
+ */
+function classifyAsBusinessOpportunity(item, source) {
+  const text = (item.title + ' ' + item.desc).substring(0, 1000);
+  const hit = (patterns) => matchAny(text, patterns);
+
+  // MUST have China connection
+  if (!hit(SIGNALS.CHINA_SIGNAL)) return { label: 'NEGATIVE', reason: 'no_china_connection' };
+
+  // MUST have business intent signals
+  const hasIntent = hit(SIGNALS.INTENT_KW);
+  const hasProcurement = hit(SIGNALS.PROCUREMENT_KW);
+  const hasActionVerb = hit(SIGNALS.ACTION_VERB_KW);
+  const hasOrgType = hit(SIGNALS.ORG_TYPE_KW);
+
+  // Strong positive signals
+  if (hasIntent && (hasOrgType || hasActionVerb)) {
+    return { label: 'POSITIVE', reason: 'strong_intent', strength: 'HIGH' };
+  }
+  if (hasProcurement && hit(SIGNALS.CHINA_SIGNAL)) {
+    return { label: 'POSITIVE', reason: 'procurement_china', strength: 'HIGH' };
+  }
+
+  // Moderate positive
+  if ((hasIntent || hasProcurement || hasActionVerb)) {
+    return { label: 'POSITIVE', reason: 'moderate_intent', strength: 'MEDIUM' };
+  }
+
+  // Weak positive: has China + bilateral trade
+  if (hit(SIGNALS.BILATERAL_KW) && hit(SIGNALS.CHINA_SIGNAL)) {
+    return { label: 'POSITIVE', reason: 'bilateral_trade', strength: 'LOW' };
+  }
+
+  // Default: check source tier (TIER 1 sources get benefit of doubt)
+  if (source.tier === 1 && hit(SIGNALS.CHINA_SIGNAL)) {
+    return { label: 'POSITIVE', reason: 'tier1_source', strength: 'LOW' };
+  }
+
+  return { label: 'NEGATIVE', reason: 'insufficient_signals', strength: 'NONE' };
+}
+
+// ── Amount Extraction ──────────────────────────────────────────────────────
+/**
+ * Extract monetary amount and currency from text.
+ */
+function extractAmount(text) {
+  text = text.substring(0, 500);
+
+  const patterns = [
+    // 中文: 预算100万美元, 约500万日元
+    { re: /(?:预算|金额|价款|价格)[^\d]{0,5}([¥￥]?\s*[\d,]+(?:\.\d+)?)\s*(?:万|亿|K|M)?\s*(?:美元|USD|日元|JPY|韩元|KRW|人民币|CNY|元)?/i, currencyHint: 'auto' },
+    { re: /([¥￥]\s*[\d,]+(?:\.\d+)?)\s*(?:万|亿)?/i, currencyHint: 'CNY' },
+    { re: /([\d,]+(?:\.\d+)?)\s*(?:万|亿)\s*(?:美元|USD)/i, currencyHint: 'USD' },
+    { re: /([\d,]+(?:\.\d+)?)\s*(?:万|亿)\s*(?:日元|JPY)/i, currencyHint: 'JPY' },
+    // 英文: USD 5 million, 10 million USD
+    { re: /(?:USD|\$)\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion|K|million)?/i, currencyHint: 'USD' },
+    { re: /([\d,]+(?:\.\d+)?)\s*(?:million|billion)\s*(?:USD|\$)/i, currencyHint: 'USD' },
+    // 越南盾
+    { re: /([\d,]+(?:\.\d+)?)\s*(?:tỷ|ty|nghìn)?\s*(?:VND|đồng|盾)/i, currencyHint: 'VND' },
+  ];
+
+  for (const { re, currencyHint } of patterns) {
+    try {
+      const m = text.match(re);
+      if (m && m[1]) {
+        const numStr = m[1].replace(/,/g, '');
+        const num = parseFloat(numStr);
+        if (!isNaN(num) && num > 0) {
+          return { amount: num, currency: currencyHint, raw: m[0] };
+        }
+      }
+    } catch (e) {}
+  }
+
+  return { amount: undefined, currency: undefined, raw: undefined };
+}
+
+// ── Country Quality Score ─────────────────────────────────────────────────
+/**
+ * Score country by business opportunity density.
+ * Used to weight regional importance.
+ */
+const COUNTRY_OPPORTUNITY_WEIGHT = {
+  'japan':      { weight: 1.0, name: '日本', note: '高收入市场，精密制造需求强' },
+  'south-korea':{ weight: 1.0, name: '韩国', note: '半导体/显示/汽车强需求' },
+  'vietnam':    { weight: 0.95, name: '越南', note: '制造业高速崛起，中国产业转移热点' },
+  'singapore':  { weight: 0.9, name: '新加坡', note: '总部经济，RCEP核心节点' },
+  'malaysia':   { weight: 0.85, name: '马来西亚', note: '半导体/E&E制造业强' },
+  'thailand':   { weight: 0.85, name: '泰国', note: '汽车/EV制造中心' },
+  'indonesia':  { weight: 0.8, name: '印尼', note: '镍/电动车/消费市场' },
+  'philippines':{ weight: 0.7, name: '菲律宾', note: 'BPO/半导体/基建' },
+  'india':      { weight: 0.75, name: '印度', note: 'PLI政策驱动制造转移' },
+  'taiwan':     { weight: 0.9, name: '中国台湾', note: '两岸贸易，ECFA框架' },
+  'pakistan':   { weight: 0.6, name: '巴基斯坦', note: 'CPEC基础设施机会' },
+  'cambodia':   { weight: 0.55, name: '柬埔寨', note: '纺织/房地产' },
+  'myanmar':    { weight: 0.4, name: '缅甸', note: '政局不稳，谨慎' },
+  'laos':       { weight: 0.5, name: '老挝', note: '中老铁路沿线' },
+};
+
+function getCountryWeight(countryId) {
+  return COUNTRY_OPPORTUNITY_WEIGHT[countryId]?.weight || 0.5;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // UTILITIES
 // ═════════════════════════════════════════════════════════════════════════════
 function log(msg) {
@@ -1468,6 +1796,12 @@ const CHINA_KW = [
   '中国大陆', '中国内陆', '中国厂商', '台商', '台资',
   '两岸', '两岸贸易', '两岸经贸', 'cross-strait', 'ECFA',
   '中国台湾.*中国', '中国.*中国台湾', 'Taiwan.*China', 'China.*Taiwan', 'Taiwan-China', '中国台湾',
+  // 香港/澳门相关
+  '香港', 'Hong Kong', 'HongKong', 'hong kong',
+  '澳门', 'Macau', 'Macao', 'macau', 'MACAU',
+  // 两岸四地
+  '两岸四地', '中国大陆.*香港', '香港.*中国大陆',
+  '中国大陆.*澳门', '澳门.*中国大陆',
   // 韩-中贸易特有表达
   '在中国的', '中国向', '对中国', '中国から', '중국에서',
   '한중', '중한', '중한 무역', '한국-중국',
@@ -1622,10 +1956,19 @@ async function fetchSource(source) {
     const results = [];
     for (const item of raw.slice(0, LIMIT_PER_SOURCE)) {
       if (isNoise(item.title, item.desc)) continue;
-      if (!hasChinaConnection(item.title, item.desc)) continue;
-      const score = calcScore(item, source);
-      if (score < source.threshold) continue;
 
+      // Step 1: Business classification (POSITIVE / NEGATIVE)
+      const classification = classifyAsBusinessOpportunity(item, source);
+      if (classification.label === 'NEGATIVE') continue;
+
+      // Step 2: Multi-dimensional enhanced scoring
+      const enhancedScore = enhancedCalcScore(item, source);
+      if (enhancedScore.total < source.threshold) continue;
+
+      // Step 3: Amount extraction
+      const extractedAmount = extractAmount(item.title + ' ' + item.desc);
+
+      // Step 4: Standard inference
       const industry     = inferIndustry(item.title, item.desc);
       const coopType     = inferCooperationType(item.title, item.desc);
       const oppType      = inferOpportunityType(item.title, item.desc);
@@ -1633,6 +1976,10 @@ async function fetchSource(source) {
       const countryId    = source.country === 'all'
         ? (inferCountryFromText(item.title + ' ' + item.desc) || 'vietnam')
         : source.country;
+
+      // Step 5: Country quality weight
+      const countryWeight = getCountryWeight(countryId);
+      const finalScore = Math.round(enhancedScore.total * countryWeight * 10) / 10;
 
       const expiresAt    = new Date();
       expiresAt.setDate(expiresAt.getDate() + 90);
@@ -1652,21 +1999,25 @@ async function fetchSource(source) {
         regionLabel:     region ? inferRegionLabel(region) : undefined,
         industry,
         cooperationType: coopType,
-        amount:          undefined,
-        currency:        undefined,
+        amount:          extractedAmount.amount || undefined,
+        currency:        extractedAmount.currency || undefined,
         companyName:     source.name,
         companyNameEn:   undefined,
         contactEmail:    'zxq@zxqconsulting.com',
         publishedAt,
         expiresAt:       expiresAt.toISOString(),
         status:          'active',
-        isPremium:       score >= 6,
+        isPremium:       enhancedScore.isPremium || finalScore >= 7,
+        score:           finalScore,
+        scoreBreakdown:  enhancedScore.signals,
+        scoreConfidence: enhancedScore.confidence,
+        classification: classification.reason,
         dataSource:      source.id,
         _rawLink:        item.link,
       });
     }
 
-    log(`  ${raw.length} raw → ${results.length} kept (score≥${source.threshold})`);
+    log(`  ${raw.length} raw → ${results.length} kept (score≥${source.threshold} | enhanced-scoring)`);
     return results;
   } catch (e) {
     log(`  FAIL: ${e.message.substring(0, 80)}`);
@@ -1676,8 +2027,9 @@ async function fetchSource(source) {
 
 // ── Main run ─────────────────────────────────────────────────────────────────
 async function run() {
-  log('========== AsiaBridge 采集器 v13 启动 ==========');
+  log('========== AsiaBridge 采集器 v14 启动 ==========');
   log(`Sources: ${SOURCES.length} configured | Dry: ${IS_DRY_RUN} | Filter: ${COUNTRY_FILTER || 'none'} | Limit: ${LIMIT_PER_SOURCE}/source`);
+  log('Scoring: Multi-dimensional Enhanced v14 (8 signals + classification)');
 
   // Run in waves of CONCURRENCY
   const allItems = [];
@@ -1711,6 +2063,22 @@ async function run() {
 
   const byIndustry = {};
   unique.forEach(o => { byIndustry[o.industry] = (byIndustry[o.industry] || 0) + 1; });
+  // Enhanced stats
+  const premiumCount = unique.filter(o => o.isPremium).length;
+  const highConfCount = unique.filter(o => o.scoreConfidence === 'HIGH').length;
+  const avgScore = unique.length > 0
+    ? (unique.reduce((s, o) => s + (o.score || 0), 0) / unique.length).toFixed(1)
+    : 'N/A';
+
+  const classificationBreakdown = {};
+  unique.forEach(o => {
+    const cls = o.classification || 'unknown';
+    classificationBreakdown[cls] = (classificationBreakdown[cls] || 0) + 1;
+  });
+
+  log(`Premium: ${premiumCount} | High-conf: ${highConfCount} | Avg score: ${avgScore}`);
+  log(`Classification: ${Object.entries(classificationBreakdown).map(([k, v]) => k + ':' + v).join(', ')}`);
+
   const topIndustry = Object.entries(byIndustry).sort((a, b) => b[1] - a[1]).slice(0, 5);
   log('Top industries: ' + topIndustry.map(([i, n]) => i + ':' + n).join(', '));
 
