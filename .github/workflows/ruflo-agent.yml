@@ -28,10 +28,17 @@ jobs:
     name: ruflo Agent — 执行运营
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
 
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
       - name: 设置 Node.js
         uses: actions/setup-node@v4
