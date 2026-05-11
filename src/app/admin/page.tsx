@@ -18,6 +18,8 @@ interface Stats {
 interface Overview {
   totalOpportunities: number;
   totalCountries: number;
+  govTenders: number;
+  enterpriseCoop: number;
   lastUpdated: string;
 }
 
@@ -44,12 +46,23 @@ export default function AdminDashboard() {
     try {
       const [usersRes, oppRes] = await Promise.all([
         fetch('/api/admin/users'),
-        fetch('/opportunities').catch(() => null),
+        fetch('/api/opportunities?limit=1000').catch(() => null),
       ]);
       if (usersRes.ok) {
         const data = await usersRes.json();
         setStats(data.stats);
         setRecentUsers(data.users.slice(0, 5));
+      }
+      if (oppRes?.ok) {
+        const oppData = await oppRes.json();
+        const opps = oppData.opportunities || [];
+        setOverview({
+          totalOpportunities: oppData.pagination?.total ?? opps.length,
+          totalCountries: new Set(opps.map((o: any) => o.country)).size,
+          govTenders: opps.filter((o: any) => o.type === 'demand').length,
+          enterpriseCoop: opps.filter((o: any) => o.type === 'cooperation' || o.type === 'investment').length,
+          lastUpdated: new Date().toISOString(),
+        });
       }
     } catch (e) {
       console.error(e);
@@ -149,6 +162,16 @@ export default function AdminDashboard() {
             className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 transition-colors"
           >
             管理会员
+          </Link>
+          <Link
+            href="/monitor"
+            target="_blank"
+            className="px-4 py-2 text-sm font-medium text-slate-800 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-200 transition-colors flex items-center gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            ruflo 监控
           </Link>
           <Link
             href="/admin"
@@ -253,15 +276,43 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Opportunities Stats */}
+      <div className="mt-6 bg-white rounded-xl border border-stone-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-stone-900">商机统计</h2>
+          <Link href="/opportunities" className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+            查看全部 →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-amber-50 rounded-xl">
+            <div className="text-2xl font-black text-amber-700">{overview?.totalOpportunities ?? '—'}</div>
+            <div className="text-xs text-amber-600 mt-1">商机总数</div>
+          </div>
+          <div className="text-center p-4 bg-blue-50 rounded-xl">
+            <div className="text-2xl font-black text-blue-700">{overview?.totalCountries ?? '—'}</div>
+            <div className="text-xs text-blue-600 mt-1">覆盖国家</div>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-xl">
+            <div className="text-2xl font-black text-green-700">{overview?.govTenders ?? '—'}</div>
+            <div className="text-xs text-green-600 mt-1">政府采购</div>
+          </div>
+          <div className="text-center p-4 bg-purple-50 rounded-xl">
+            <div className="text-2xl font-black text-purple-700">{overview?.enterpriseCoop ?? '—'}</div>
+            <div className="text-xs text-purple-600 mt-1">企业合作</div>
+          </div>
+        </div>
+      </div>
+
       {/* Quick Actions */}
       <div className="mt-6 bg-white rounded-xl border border-stone-200 p-6">
         <h2 className="text-base font-bold text-stone-900 mb-4">快捷操作</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: '添加会员', href: '/admin/members', desc: '创建新账号', color: 'blue' },
+            { label: '合作申请', href: '/admin/applications', desc: '查看客户合作申请', color: 'blue' },
+            { label: '管理会员', href: '/admin/members', desc: '管理会员账号', color: 'purple' },
             { label: '商机管理', href: '/admin', desc: '查看商机数据', color: 'green' },
-            { label: '数据统计', href: '/admin/members', desc: '查看数据报表', color: 'purple' },
-            { label: '系统设置', href: '/admin/members', desc: '配置平台参数', color: 'stone' },
+            { label: '数据统计', href: '/admin/members', desc: '查看数据报表', color: 'stone' },
           ].map((action) => (
             <Link
               key={action.label}
