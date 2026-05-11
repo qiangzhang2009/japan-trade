@@ -91,37 +91,3 @@ jobs:
           else
             echo "VERCEL_REVALIDATE_HOOK 未配置，跳过 ISR 触发"
           fi
-
-  build-deploy:
-    name: 构建并部署
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # 只有当有数据变更时才构建（节省 GitHub Actions 分钟数）
-    needs: collect-data
-    if: needs.collect-data.outputs.changed == 'true' || github.event.inputs.force_revalidate == 'true'
-
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 设置 Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 安装依赖
-        run: npm ci
-
-      - name: 构建站点
-        env:
-          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://china-japan-trade.vercel.app' }}
-        run: npm run build
-
-      - name: 部署到 Vercel（预览）
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./
