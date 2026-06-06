@@ -1,48 +1,28 @@
 {
-  "name": "asiabridge",
-  "version": "1.0.0",
+  "name": "chūhǎi-tòng",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "collect": "node scripts/collector.js",
-    "collect:all": "node scripts/collect-all.js",
-    "collect:kr": "node scripts/narajangteo.js",
-    "collect:tw": "node scripts/twtender.js",
-    "collect:vn": "node scripts/vnfta.js",
-    "collect:stats": "node scripts/tradestats.js",
-    "collect:hf": "node scripts/hfdatasets.js",
-    "collect:c4a": "python3 scripts/crawl4ai_scraper.py"
+    "lint": "next lint"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.9.0",
-    "@upstash/redis": "^1.34.0",
-    "bcryptjs": "2.4.3",
-    "clsx": "^2.1.0",
-    "framer-motion": "^11.0.0",
-    "jose": "^5.9.0",
-    "lucide-react": "^0.460.0",
-    "nanoid": "^5.0.0",
-    "next": "^15.5.7",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-hook-form": "^7.54.0",
-    "swr": "^2.2.5",
-    "tailwind-merge": "^2.5.0",
-    "zod": "^3.23.0"
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "next": "15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^22.0.0",
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "^15.5.7",
-    "postcss": "^8.4.40",
-    "tailwindcss": "^3.4.0",
-    "typescript": "^5.6.0"
+    "eslint": "^10.4.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.0"
   }
 }

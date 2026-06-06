@@ -1,360 +1,318 @@
 import Link from 'next/link';
-import SiteLayout from '@/components/layout/SiteLayout';
-import { getCountries, getOpportunities, getSiteStats } from '@/lib/dataService';
-import { formatRelativeTime, getCountryFlag, getOpportunityTypeLabel, getCooperationTypeLabel, getTierLabel } from '@/lib/utils';
+import { Globe, ArrowRight, TrendingUp, Users, Shield, Zap } from 'lucide-react';
+import Navbar from '@/components/Navbar';
 
-export const revalidate = 3600; // ISR: re-generate at most every 1 hour
+const STATS = [
+  { value: '16+', label: '覆盖国家', icon: Globe },
+  { value: '200+', label: '渠道合作伙伴', icon: Users },
+  { value: '85+', label: '覆盖国家/地区', icon: TrendingUp },
+  { value: '98%', label: '合规通过率', icon: Shield },
+];
 
-function tierBorderColor(tier: 1 | 2 | 3): string {
-  if (tier === 1) return 'border-amber-300 hover:border-amber-400';
-  if (tier === 2) return 'border-stone-300 hover:border-stone-400';
-  return 'border-orange-200 hover:border-orange-300';
-}
+const SERVICES = [
+  {
+    icon: TrendingUp,
+    title: '商机精准匹配',
+    desc: '基于85个国家数据，AI识别最适合您产品的海外渠道商、代理商与合作伙伴',
+    color: 'from-purple-500 to-pink-500',
+  },
+  {
+    icon: Shield,
+    title: '合规护航',
+    desc: '覆盖各国药监政策、准入规则、认证要求，提前预警合规风险，避免进入误区',
+    color: 'from-blue-500 to-cyan-500',
+  },
+  {
+    icon: Users,
+    title: '渠道直通',
+    desc: '跳过中间商，直接对接海外优质渠道商，建立长期稳定合作关系',
+    color: 'from-emerald-500 to-teal-500',
+  },
+  {
+    icon: Zap,
+    title: '快速落地',
+    desc: '全流程一站式服务，从需求诊断到合同签订，平均周期缩短80%',
+    color: 'from-amber-500 to-orange-500',
+  },
+];
 
-function tierBadgeColor(tier: 1 | 2 | 3): string {
-  if (tier === 1) return 'bg-amber-100 text-amber-700 border-amber-200';
-  if (tier === 2) return 'bg-stone-100 text-stone-600 border-stone-200';
-  return 'bg-orange-100 text-orange-700 border-orange-200';
-}
+const TIER1 = [
+  { id: 'jp', name: '日本', flag: '🇯🇵', tier: 1 },
+  { id: 'kr', name: '韩国', flag: '🇰🇷', tier: 1 },
+  { id: 'sg', name: '新加坡', flag: '🇸🇬', tier: 1 },
+  { id: 'vn', name: '越南', flag: '🇻🇳', tier: 1 },
+];
+const TIER2 = [
+  { id: 'my', name: '马来西亚', flag: '🇲🇾', tier: 2 },
+  { id: 'id', name: '印度尼西亚', flag: '🇮🇩', tier: 2 },
+  { id: 'th', name: '泰国', flag: '🇹🇭', tier: 2 },
+  { id: 'ph', name: '菲律宾', flag: '🇵🇭', tier: 2 },
+];
+const TIER3 = [
+  { id: 'in', name: '印度', flag: '🇮🇳', tier: 3 },
+  { id: 'lk', name: '斯里兰卡', flag: '🇱🇰', tier: 3 },
+  { id: 'np', name: '尼泊尔', flag: '🇳🇵', tier: 3 },
+  { id: 'pk', name: '巴基斯坦', flag: '🇵🇰', tier: 3 },
+  { id: 'la', name: '老挝', flag: '🇱🇦', tier: 3 },
+  { id: 'kh', name: '柬埔寨', flag: '🇰🇭', tier: 3 },
+  { id: 'mm', name: '缅甸', flag: '🇲🇲', tier: 3 },
+  { id: 'af', name: '阿富汗', flag: '🇦🇫', tier: 3 },
+];
 
-async function HeroSection({ stats }: { stats: Awaited<ReturnType<typeof getSiteStats>> }) {
+const TIER_BORDER: Record<number, string> = {
+  1: 'border-gold-400',
+  2: 'border-gray-400',
+  3: 'border-amber-700',
+};
+
+export default function HomePage() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-blue-950">
-      {/* Decorative background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-60 -right-60 w-[500px] h-[500px] bg-blue-800/30 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[400px] h-[400px] bg-blue-700/20 rounded-full blur-3xl" />
-        <div className="absolute top-20 left-1/3 w-[300px] h-[300px] bg-blue-600/10 rounded-full blur-3xl" />
-        {/* Grid pattern */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'linear-gradient(blue-400 1px, transparent 1px), linear-gradient(90deg, blue-400 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-        }} />
-      </div>
+    <>
+      <Navbar />
+      <main>
+        {/* ── Hero ─────────────────────────────────────────────────────── */}
+        <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+          {/* Background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-950 via-[#0a0a0f] to-[#0f0a1e]" />
+          <div className="absolute inset-0" style={{
+            backgroundImage: 'radial-gradient(circle at 30% 40%, rgba(139,82,236,0.12) 0%, transparent 60%), radial-gradient(circle at 70% 60%, rgba(59,130,246,0.08) 0%, transparent 60%)',
+          }} />
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-        <div className="max-w-3xl">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-800/50 border border-blue-700/50 text-xs font-semibold text-blue-300 mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            覆盖东南亚+东亚 13 个核心市场
-          </div>
+          {/* Grid */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }} />
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.1] tracking-tight mb-6">
-            <span className="text-white">出海第一站</span>
-            <br />
-            <span className="bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 bg-clip-text text-transparent">
-              商机通亚洲
-            </span>
-          </h1>
-
-          <p className="text-lg sm:text-xl text-blue-200 leading-relaxed mb-8 max-w-2xl">
-            帮助中国企业找到东南亚、东亚优质<strong className="text-white">海外客户</strong>、
-            <strong className="text-white">代理商</strong>、
-            <strong className="text-white">渠道商</strong>与合作伙伴。
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <Link
-              href="/opportunities"
-              className="inline-flex items-center gap-2 px-6 py-3.5 text-base font-bold text-blue-900 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-lg shadow-amber-400/20 hover:shadow-xl hover:-translate-y-0.5"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              浏览最新商机
-            </Link>
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-2 px-6 py-3.5 text-base font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl transition-all hover:-translate-y-0.5 backdrop-blur-sm"
-            >
-              了解会员服务
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </Link>
-          </div>
-
-          {/* Stats */}
-          <div className="flex flex-wrap gap-8 mt-12 pt-8 border-t border-white/10">
-            {[
-              { value: `${stats.activeCountriesCount}`, label: '覆盖国家', sub: '东南亚+东亚核心市场' },
-              { value: `${stats.opportunitiesCount}+`, label: '活跃商机', sub: '实时更新' },
-              { value: '24h', label: '平均更新频率', sub: '全天候自动化采集' },
-              { value: '0', label: '出版审核', sub: '只做商机不搞新闻' },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <div className="text-2xl font-black text-white">{stat.value}</div>
-                <div className="text-xs text-blue-400 font-medium">{stat.label}</div>
-                <div className="text-[10px] text-blue-500/60">{stat.sub}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-async function CountryGrid({ countries, opportunities }: { countries: Awaited<ReturnType<typeof getCountries>>, opportunities: Awaited<ReturnType<typeof getOpportunities>> }) {
-  const tier1 = countries.filter(c => c.tier === 1);
-  const tier2 = countries.filter(c => c.tier === 2);
-  const tier3 = countries.filter(c => c.tier === 3);
-
-  const oppCountByCountry = opportunities.reduce((acc, o) => {
-    acc[o.country] = (acc[o.country] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  function CountryCard({ country }: { country: (typeof countries)[0] }) {
-    const oppCount = oppCountByCountry[country.id] || 0;
-    return (
-      <Link href={`/opportunities?country=${country.id}`} className="group block">
-        <div className={`bg-white rounded-2xl border-2 p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col h-full ${tierBorderColor(country.tier)}`}>
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">{country.flag}</span>
-              <div>
-                <h3 className="font-bold text-stone-900 group-hover:text-blue-800 transition-colors text-base">
-                  {country.nameZh}
-                </h3>
-                <p className="text-xs text-stone-400">{country.nameEn}</p>
-              </div>
+          <div className="relative z-10 max-w-6xl mx-auto px-4 text-center pt-24">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm mb-8 animate-fade-up">
+              <Zap className="w-3.5 h-3.5" />
+              <span>已收录 <strong>200+</strong> 海外渠道商资源</span>
             </div>
-            <span className={`inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full border ${tierBadgeColor(country.tier)}`}>
-              {getTierLabel(country.tier)}
-            </span>
-          </div>
 
-          <p className="text-sm text-stone-500 leading-relaxed mb-4 flex-1 line-clamp-2">
-            {country.summary}
-          </p>
-
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {country.mainIndustries.slice(0, 3).map(ind => (
-              <span key={ind} className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-stone-100 text-stone-500 border border-stone-200">
-                {ind}
+            {/* Headline */}
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-white leading-[1.1] mb-6 animate-fade-up stagger-1">
+              出海第一站
+              <br />
+              <span className="bg-gradient-to-r from-brand-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                商机通亚洲
               </span>
-            ))}
-            {country.mainIndustries.length > 3 && (
-              <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-stone-100 text-stone-400">
-                +{country.mainIndustries.length - 3}
-              </span>
-            )}
-          </div>
+            </h1>
 
-          <div className="flex items-center justify-between pt-3 border-t border-stone-100">
-            <span className="text-xs text-stone-400">
-              {country.gdp && `GDP ${country.gdp}`}
-            </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-              {oppCount} 个商机
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </span>
-          </div>
-        </div>
-      </Link>
-    );
-  }
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-up stagger-2">
+              汇聚东南亚+东亚优质商机，帮您精准找到海外代理商、渠道商与合作伙伴。<br />
+              覆盖日本、韩国、新加坡、越南、马来西亚等<strong className="text-white">16个亚洲市场</strong>。
+            </p>
 
-  return (
-    <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="mb-10">
-        <h2 className="text-2xl font-black text-stone-900 mb-2">全球市场版块</h2>
-        <p className="text-sm text-stone-500">按影响力梯队划分，选择您的目标市场</p>
-      </div>
-
-      {/* Tier 1 */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" />
-          <h3 className="text-base font-bold text-stone-800">第一梯队 — 高价值市场</h3>
-          <span className="text-xs text-stone-400">经济发达，合作需求旺盛，立即进入</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {tier1.map(c => <CountryCard key={c.id} country={c} />)}
-        </div>
-      </div>
-
-      {/* Tier 2 */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="inline-block w-2.5 h-2.5 rounded-full bg-stone-400" />
-          <h3 className="text-base font-bold text-stone-800">第二梯队 — 高速增长市场</h3>
-          <span className="text-xs text-stone-400">快速成长，潜力巨大，提前布局</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {tier2.map(c => <CountryCard key={c.id} country={c} />)}
-        </div>
-      </div>
-
-      {/* Tier 3 */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="inline-block w-2.5 h-2.5 rounded-full bg-orange-400" />
-          <h3 className="text-base font-bold text-stone-800">第三梯队 — 新兴前沿市场</h3>
-          <span className="text-xs text-stone-400">最后蓝海，先入为主，建立根据地</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {tier3.map(c => <CountryCard key={c.id} country={c} />)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-async function FeaturedOpportunities({ opportunities }: { opportunities: Awaited<ReturnType<typeof getOpportunities>> }) {
-  const featured = opportunities.filter(o => o.isPremium && o.status === 'active').slice(0, 6);
-  const recent = opportunities.filter(o => o.status === 'active').sort((a, b) =>
-    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-  ).slice(0, 5);
-
-  function OppCard({ opp }: { opp: (typeof opportunities)[0] }) {
-    return (
-      <Link href={`/opportunities/${opp.id}`} className="group block">
-        <div className={`bg-white rounded-xl border p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 h-full ${opp.isPremium ? 'border-amber-200 shadow-amber-50' : 'border-stone-200'}`}>
-          <div className="flex items-start justify-between mb-2 gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full border"
-                style={{
-                  backgroundColor: opp.type === 'demand' ? '#fef3c7' : opp.type === 'supply' ? '#dbeafe' : opp.type === 'investment' ? '#ede9fe' : '#d1fae5',
-                  color: opp.type === 'demand' ? '#92400e' : opp.type === 'supply' ? '#1e40af' : opp.type === 'investment' ? '#5b21b6' : '#065f46',
-                  borderColor: opp.type === 'demand' ? '#fde68a' : opp.type === 'supply' ? '#bfdbfe' : opp.type === 'investment' ? '#ddd6fe' : '#a7f3d0',
-                }}>
-                {getOpportunityTypeLabel(opp.type)}
-              </span>
-              {opp.cooperationType && (
-                <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded-full bg-stone-100 text-stone-500 border border-stone-200">
-                  {getCooperationTypeLabel(opp.cooperationType)}
-                </span>
-              )}
-            </div>
-            <span className="text-xl flex-shrink-0">{getCountryFlag(opp.country)}</span>
-          </div>
-
-          <h4 className="font-bold text-stone-800 text-sm leading-snug mb-1.5 group-hover:text-blue-700 transition-colors line-clamp-2">
-            {opp.title}
-          </h4>
-
-          <p className="text-xs text-stone-400 mb-2">
-            {opp.regionLabel && <span className="mr-2">{opp.regionLabel}</span>}
-            <span>{opp.industry}</span>
-          </p>
-
-          <div className="flex items-center justify-between pt-2 border-t border-stone-100">
-            {opp.amount && (
-              <span className="text-sm font-bold text-blue-700">{opp.amount}万 {opp.currency}</span>
-            )}
-            <span className="text-[10px] text-stone-400 ml-auto">
-              {formatRelativeTime(opp.publishedAt)}
-            </span>
-          </div>
-        </div>
-      </Link>
-    );
-  }
-
-  return (
-    <section className="py-16 bg-white border-y border-stone-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-black text-stone-900">精选商机</h2>
-            <p className="text-sm text-stone-500 mt-1">来自亚洲各国企业的真实合作需求</p>
-          </div>
-          <Link
-            href="/opportunities"
-            className="text-sm font-medium text-blue-700 hover:text-blue-800 flex items-center gap-1 transition-colors"
-          >
-            查看全部商机
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {featured.map(opp => <OppCard key={opp.id} opp={opp} />)}
-        </div>
-
-        {/* Recent sidebar */}
-        <div className="bg-stone-50 rounded-2xl border border-stone-200 p-5">
-          <h3 className="text-sm font-semibold text-stone-700 mb-4">最新发布</h3>
-          <div className="space-y-3">
-            {recent.map(opp => (
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up stagger-3">
               <Link
-                key={opp.id}
-                href={`/opportunities/${opp.id}`}
-                className="flex items-center gap-3 group"
+                href="/opportunities"
+                className="group flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-700 text-white font-semibold text-lg hover:from-brand-500 hover:to-brand-600 transition-all shadow-2xl shadow-brand-700/40"
               >
-                <span className="text-base flex-shrink-0">{getCountryFlag(opp.country)}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-stone-800 leading-snug group-hover:text-blue-600 transition-colors line-clamp-1">
-                    {opp.title}
-                  </p>
-                  <p className="text-[10px] text-stone-400 mt-0.5">
-                    {opp.regionLabel && <span>{opp.regionLabel} · </span>}
-                    {formatRelativeTime(opp.publishedAt)}
-                  </p>
-                </div>
+                浏览商机
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-            ))}
+              <Link
+                href="/contact"
+                className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-white/15 text-white font-semibold text-lg hover:bg-white/5 transition-all"
+              >
+                免费咨询
+              </Link>
+            </div>
+          </div>
+
+          {/* Scroll hint */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float">
+            <div className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-1.5">
+              <div className="w-1.5 h-2.5 bg-brand-400 rounded-full animate-bounce" />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Stats ────────────────────────────────────────────────────── */}
+        <section className="relative py-20 bg-gradient-to-b from-transparent to-brand-950/30">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {STATS.map((s, i) => (
+                <div key={i} className="text-center p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-brand-500/20 transition-colors">
+                  <s.icon className="w-6 h-6 text-brand-400 mx-auto mb-3" />
+                  <div className="text-3xl font-extrabold text-white mb-1">{s.value}</div>
+                  <div className="text-sm text-gray-500">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Services ─────────────────────────────────────────────────── */}
+        <section className="py-24 relative">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">为什么选择出海通</h2>
+              <p className="text-gray-400 text-lg max-w-xl mx-auto">我们不只是信息平台——从需求诊断到渠道落地，一站式解决中国企业出海亚洲的所有关键问题</p>
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {SERVICES.map((s, i) => (
+                <div key={i} className="group p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-brand-500/20 transition-all duration-300 hover:-translate-y-1">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center mb-4 shadow-lg`}>
+                    <s.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">{s.title}</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed">{s.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Country Grid ──────────────────────────────────────────────── */}
+        <section className="py-24 bg-gradient-to-b from-brand-950/30 to-transparent">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">覆盖亚洲核心市场</h2>
+              <p className="text-gray-400 text-lg">按影响力梯队规划，优先进入高价值市场</p>
+            </div>
+
+            {/* Tier 1 */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-gold-500/10 text-gold-400 border border-gold-500/20">第一梯队</span>
+                <div className="h-px flex-1 bg-gradient-to-r from-gold-500/30 to-transparent" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {TIER1.map((c) => (
+                  <Link key={c.id} href={`/market/${c.id}`} className="group relative p-5 rounded-2xl bg-white/[0.04] border border-gold-500/20 hover:border-gold-400/60 transition-all hover:-translate-y-0.5">
+                    <div className="text-3xl mb-2">{c.flag}</div>
+                    <div className="font-semibold text-white group-hover:text-gold-400 transition-colors">{c.name}</div>
+                    <div className="text-xs text-gray-500 mt-1">核心市场</div>
+                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gold-400 animate-pulse" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Tier 2 */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/10 text-gray-400 border border-gray-500/20">第二梯队</span>
+                <div className="h-px flex-1 bg-gradient-to-r from-gray-500/30 to-transparent" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {TIER2.map((c) => (
+                  <Link key={c.id} href={`/market/${c.id}`} className="group p-5 rounded-2xl bg-white/[0.04] border border-white/5 hover:border-white/20 transition-all hover:-translate-y-0.5">
+                    <div className="text-3xl mb-2">{c.flag}</div>
+                    <div className="font-semibold text-white group-hover:text-brand-300 transition-colors">{c.name}</div>
+                    <div className="text-xs text-gray-500 mt-1">增长市场</div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Tier 3 */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-700/10 text-amber-600 border border-amber-700/20">第三梯队</span>
+                <div className="h-px flex-1 bg-gradient-to-r from-amber-700/30 to-transparent" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+                {TIER3.map((c) => (
+                  <Link key={c.id} href={`/market/${c.id}`} className="group p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/15 transition-all text-center">
+                    <div className="text-2xl mb-1">{c.flag}</div>
+                    <div className="font-medium text-sm text-gray-300 group-hover:text-white transition-colors">{c.name}</div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-center mt-12">
+              <Link href="/opportunities" className="inline-flex items-center gap-2 text-brand-400 hover:text-brand-300 font-medium transition-colors">
+                查看全部商机
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Why Now ───────────────────────────────────────────────────── */}
+        <section className="py-24">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">现在，是最好的入场时机</h2>
+            <p className="text-gray-400 text-lg mb-12">
+              亚洲大健康市场正在经历结构性增长，中国中医药企业出海正处于历史性窗口期。
+            </p>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[
+                { title: '需求爆发', desc: '亚洲老龄化加速，天然健康产品需求年增15%+' },
+                { title: '渠道空缺', desc: '优质中国供应商严重不足，先进入者将占据核心渠道' },
+                { title: '政策利好', desc: 'RCEP深化实施，关税减免，贸易壁垒持续降低' },
+              ].map((item, i) => (
+                <div key={i} className="p-6 rounded-2xl bg-gradient-to-b from-brand-900/40 to-transparent border border-brand-500/10">
+                  <div className="text-brand-400 font-bold text-2xl mb-3">0{i + 1}</div>
+                  <h3 className="text-white font-semibold mb-2">{item.title}</h3>
+                  <p className="text-sm text-gray-400">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── CTA ───────────────────────────────────────────────────────── */}
+        <section className="py-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-950 to-purple-950/50" />
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(139,82,236,0.15) 0%, transparent 70%)' }} />
+          <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">准备好开启您的出海之旅了吗？</h2>
+            <p className="text-gray-300 text-lg mb-8">免费咨询，15分钟内给出初步市场评估和进入建议</p>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 px-10 py-4 rounded-2xl bg-white text-brand-800 font-bold text-lg hover:bg-gray-100 transition-all shadow-2xl"
+            >
+              立即免费咨询
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            <p className="mt-4 text-sm text-gray-500">无需注册，留下联系方式即可获得专业顾问对接</p>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-white/5 bg-black/40">
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <div className="grid sm:grid-cols-3 gap-8 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-bold text-white">出海通 AsiaBridge</span>
+              </div>
+              <p className="text-sm text-gray-500 leading-relaxed">上海张小强企业咨询事务所出品<br />专注中国企业出海亚洲市场</p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-white mb-4">快速链接</h4>
+              <ul className="space-y-2 text-sm text-gray-500">
+                {[['商机广场', '/opportunities'], ['市场洞察', '/market/jp'], ['关于我们', '/about'], ['联系我们', '/contact']].map(([label, href]) => (
+                  <li key={href}><Link href={href} className="hover:text-brand-400 transition-colors">{label}</Link></li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-white mb-4">核心市场</h4>
+              <ul className="space-y-2 text-sm text-gray-500">
+                {[['日本', '/market/jp'], ['韩国', '/market/kr'], ['新加坡', '/market/sg'], ['越南', '/market/vn']].map(([label, href]) => (
+                  <li key={href}><Link href={href} className="hover:text-brand-400 transition-colors">{label}</Link></li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="pt-8 border-t border-white/5 text-center text-sm text-gray-600">
+            © 2026 出海通 AsiaBridge · 上海张小强企业咨询事务所 · 沪ICP备XXXXXXXX号
           </div>
         </div>
-      </div>
-    </section>
-  );
-}
-
-function CTASection() {
-  return (
-    <section className="py-20 bg-gradient-to-br from-blue-900 via-blue-950 to-blue-900 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-10 left-10 w-72 h-72 border border-white rounded-full" />
-        <div className="absolute bottom-10 right-10 w-96 h-96 border border-white rounded-full" />
-      </div>
-      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight mb-4">
-          立即开始您的出海之旅
-        </h2>
-        <p className="text-blue-300 text-lg mb-8 max-w-2xl mx-auto">
-          免费浏览所有商机，升级专业版获得完整对接服务。
-          <br />出海通 — 让您的第一步走得更稳。
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link
-            href="/pricing"
-            className="inline-flex items-center gap-2 px-8 py-4 text-base font-bold text-blue-900 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-xl shadow-amber-400/20"
-          >
-            立即升级专业版
-          </Link>
-          <Link
-            href="/opportunities"
-            className="inline-flex items-center gap-2 px-8 py-4 text-base font-semibold text-white border border-white/30 hover:bg-white/10 rounded-xl transition-all"
-          >
-            免费浏览商机
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export default async function HomePage() {
-  const [countries, opportunities, stats] = await Promise.all([
-    getCountries(),
-    getOpportunities(),
-    getSiteStats(),
-  ]);
-
-  return (
-    <SiteLayout>
-      <HeroSection stats={stats} />
-      <CountryGrid countries={countries} opportunities={opportunities} />
-      <FeaturedOpportunities opportunities={opportunities} />
-      <CTASection />
-    </SiteLayout>
+      </footer>
+    </>
   );
 }

@@ -1,13 +1,4 @@
-export type UserRole = 'viewer' | 'member' | 'premium' | 'admin';
-export type UserStatus = 'active' | 'suspended' | 'pending';
-
-export interface Region {
-  id: string;
-  nameZh: string;
-  nameEn: string;
-  countryId: string;
-  description?: string;
-}
+// ── Country ──────────────────────────────────────────────────────────────────
 
 export interface Country {
   id: string;
@@ -15,100 +6,90 @@ export interface Country {
   nameEn: string;
   flag: string;
   tier: 1 | 2 | 3;
-  gdp?: string;
-  population?: string;
+  region: string;
+  gdp: string;
+  population: string;
+  gdpPerCapita: string;
   mainIndustries: string[];
   summary: string;
-  summaryEn: string;
-  regions: Region[];
+  description: string;
+  opportunityCount: number;
+  color: string; // accent color for the country card
 }
 
-export interface BusinessOpportunity {
+// ── Channel Partner ──────────────────────────────────────────────────────────
+
+export type PartnerType = 'distributor' | 'agent' | 'clinic' | 'pharmacy' | 'hospital' | 'hospital' | 'online' | 'association';
+export type QualityScore = 'high' | 'medium' | 'low';
+
+export interface ChannelPartner {
+  id: string;
+  name: string;
+  country: string; // Country.id
+  region?: string;
+  type: PartnerType;
+  quality: QualityScore;
+  description: string;
+  website?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  socialLinks?: { platform: string; url: string }[];
+  relatedLinks?: string[];
+  specialties: string[]; // e.g. ['汉方制剂', '保健品', '药食同源']
+  languages: string[];
+  established?: number;
+  tags: string[];
+  lastUpdated: string;
+}
+
+// ── Opportunity ──────────────────────────────────────────────────────────────
+
+export type OpportunityType = 'supply' | 'demand' | 'investment' | 'partnership' | 'distribution';
+
+export interface Opportunity {
   id: string;
   title: string;
-  titleEn?: string;
-  description: string;
-  descriptionEn?: string;
-  type: 'supply' | 'demand' | 'investment' | 'cooperation';
-  country: string;
+  country: string; // Country.id
   region?: string;
-  industry: string;
-  amount?: string;
-  currency?: 'CNY' | 'JPY' | 'USD';
+  type: OpportunityType;
+  description: string;
   companyName: string;
-  companyNameEn?: string;
-  contactEmail: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  budgetRange?: string;
+  investmentAmount?: string;
+  industry: string;
+  tags: string[];
   publishedAt: string;
-  expiresAt: string;
-  status: 'active' | 'pending' | 'closed';
-  isPremium: boolean;
-  regionLabel?: string;
-  cooperationType?: 'agency' | 'distribution' | 'oem' | 'joint-venture' | 'technology';
-  dataSource?: string;
+  expiryDate?: string;
+  urgency: 'hot' | 'new' | 'normal';
+  sourceCountry: string; // 'CN' | 'JP' | etc.
 }
 
-export interface PricingPlan {
+// ── Service Package ──────────────────────────────────────────────────────────
+
+export interface ServicePackage {
   id: string;
   name: string;
   nameEn: string;
-  tagline: string;
-  taglineEn: string;
-  price: number;
-  priceUnit: 'month' | 'year' | 'once';
-  currency: 'CNY' | 'USD';
+  price: string;
+  period: string;
+  description: string;
   features: string[];
-  featuresEn: string[];
-  highlighted?: boolean;
-  badge?: string;
+  highlight?: string;
   cta: string;
 }
 
-export interface Subscription {
-  id: string;
-  userId: string;
-  planId: string;
-  status: 'active' | 'cancelled' | 'expired' | 'pending';
-  startDate: string;
-  endDate: string;
-  autoRenew: boolean;
-  paymentMethod: string;
-  amount: number;
-}
+// ── Case Study ───────────────────────────────────────────────────────────────
 
-export interface User {
+export interface CaseStudy {
   id: string;
-  email: string;
-  companyName: string;
-  contactName: string;
-  phone: string;
-  country: string;
+  company: string;
   industry: string;
-  role: UserRole;
-  status: UserStatus;
-  createdAt: string;
-  lastLogin: string;
-  subscription: {
-    planId: string;
-    status: 'active' | 'cancelled' | 'expired' | 'none';
-    startDate: string;
-    endDate: string;
-  };
-}
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-export interface SiteConfig {
-  siteName: string;
-  siteNameEn: string;
-  tagline: string;
-  taglineEn: string;
-  description: string;
-  descriptionEn: string;
-  domain: string;
-  email: string;
+  targetCountry: string;
+  challenge: string;
+  solution: string;
+  result: string;
+  logo?: string;
 }

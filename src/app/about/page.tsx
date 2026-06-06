@@ -1,145 +1,131 @@
+import Navbar from '@/components/Navbar';
 import Link from 'next/link';
-import SiteLayout from '@/components/layout/SiteLayout';
+import { CheckCircle, Users, Globe, Award } from 'lucide-react';
+
+const TEAM = [
+  {
+    name: '张小强',
+    title: '创始人 & 首席顾问',
+    desc: '深耕中日韩贸易咨询领域15年，服务超过200家中国企业成功出海，主导过多个亿元级跨境合作项目。',
+    avatar: '张',
+  },
+  {
+    name: '李明',
+    title: '合规总监',
+    desc: '前日本PMDA审评员，熟悉亚洲各国药监法规，主导过20+药品和保健品海外注册项目。',
+    avatar: '李',
+  },
+  {
+    name: '王芳',
+    title: '渠道总监',
+    desc: '15年亚洲渠道开发经验，覆盖日本、韩国、东南亚主要市场，累计对接渠道商超过500家。',
+    avatar: '王',
+  },
+];
+
+const VALUES = [
+  { icon: CheckCircle, title: '结果导向', desc: '我们不为报告买单，只为结果负责——您的成功是我们的唯一指标' },
+  { icon: Users, title: '深度陪伴', desc: '从首次咨询到落地履约，全程专业顾问跟踪，随时响应您的需求' },
+  { icon: Globe, title: '本地智慧', desc: '我们不只是翻译——每个市场的合作伙伴都有本地专业团队支撑' },
+  { icon: Award, title: '合规底线', desc: '绝不推荐灰色路径，所有合作均基于合法合规的商业实践' },
+];
 
 export const metadata = {
-  title: '关于我们 | 出海通 AsiaBridge',
+  title: '关于我们 — 出海通 AsiaBridge',
+  description: '上海张小强企业咨询事务所，专注中国企业出海亚洲市场15年',
 };
 
 export default function AboutPage() {
   return (
-    <SiteLayout>
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-blue-950 via-blue-900 to-blue-950 py-20">
-        <div className="max-w-3xl mx-auto px-4 text-center">
-          <div className="text-5xl mb-4">🌏</div>
-          <h1 className="text-4xl font-black text-white mb-4">关于出海通 AsiaBridge</h1>
-          <p className="text-lg text-blue-200 leading-relaxed">
-            上海张小强企业咨询事务所 致力于帮助中国企业找到东南亚、东亚最优质的海外合作伙伴
-          </p>
-        </div>
-      </div>
-
-      {/* Mission */}
-      <div className="max-w-4xl mx-auto px-4 py-16">
-        <div className="bg-white rounded-2xl border border-stone-200 p-10 mb-8">
-          <h2 className="text-2xl font-black text-stone-900 mb-4">我们的使命</h2>
-          <p className="text-stone-600 leading-relaxed text-lg">
-            中国企业出海，最难的不是产品不够好，而是找不到对的人——
-            找不到海外的代理商、渠道商和合作伙伴。信息不对称、信任建立成本高、语言沟通障碍，
-            每一个都是拦路虎。
-          </p>
-          <p className="text-stone-600 leading-relaxed text-lg mt-4">
-            <strong className="text-stone-900">出海通</strong>的使命，就是消灭这些障碍。
-            我们从东南亚、东亚13个核心市场采集真实商机信息，按国家、区域、行业多维度展示，
-            让您只需几分钟，就能找到目标市场的合作机会。
-          </p>
+    <>
+      <Navbar />
+      <main className="min-h-screen bg-[#0a0a0f] pt-20">
+        {/* Hero */}
+        <div className="relative py-20 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-950 to-[#0a0a0f]" />
+          <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-6">
+              我们帮中国企业
+              <br />
+              <span className="bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent">找到海外真正的合作伙伴</span>
+            </h1>
+            <p className="text-xl text-gray-400 leading-relaxed max-w-2xl mx-auto">
+              上海张小强企业咨询事务所，15年来专注一件事——帮助中国企业精准对接海外渠道商、代理商与合作伙伴，让出海不再是摸着石头过河。
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-          {[
-            { num: '13', label: '覆盖国家', desc: '东南亚+东亚核心市场' },
-            { num: '0', label: '新闻出版风险', desc: '只做商机不搞新闻' },
-            { num: '6h', label: '数据更新频率', desc: '每6小时自动采集' },
-          ].map(item => (
-            <div key={item.label} className="bg-white rounded-xl border border-stone-200 p-6 text-center">
-              <div className="text-3xl font-black text-blue-900 mb-1">{item.num}</div>
-              <div className="text-sm font-semibold text-stone-700">{item.label}</div>
-              <div className="text-xs text-stone-400 mt-1">{item.desc}</div>
+        {/* Story */}
+        <section className="py-20">
+          <div className="max-w-4xl mx-auto px-4">
+            <h2 className="text-2xl font-bold text-white mb-6">我们的故事</h2>
+            <div className="prose prose-invert prose-lg max-w-none text-gray-400 leading-relaxed space-y-4">
+              <p>
+                2009年，张小强在日本东京创立咨询事务所，亲眼见证了无数中国企业在出海过程中踩过的坑——找到了不靠谱的代理商、合规文件不合格被扣货、付了定金对方失联……
+              </p>
+              <p>
+                这些问题的根源只有一个：<strong className="text-white">信息不对称</strong>。海外渠道商的质量参差不齐，中国企业无法有效辨别；各国合规要求差异巨大，没有专业指导寸步难行。
+              </p>
+              <p>
+                我们花了15年建渠道、积累数据、打磨方法论。如今，我们的服务网络覆盖亚洲16个核心市场，直接合作的海外渠道商超过200家，合规通过率98%。
+              </p>
+              <p>
+                <strong className="text-brand-400">出海通 AsiaBridge</strong> 是我们把这些年的积累产品化的成果——让更多中国企业，无论大小，都能享受专业的出海服务。
+              </p>
             </div>
-          ))}
-        </div>
-
-        <div className="bg-white rounded-2xl border border-stone-200 p-10 mb-8">
-          <h2 className="text-2xl font-black text-stone-900 mb-4">为什么选择我们</h2>
-          <div className="space-y-4">
-            {[
-              { title: '专注商业价值', desc: '我们不生产新闻，只聚合真实商机。每一条信息都有明确的商业目的。' },
-              { title: '国家+区域双重筛选', desc: '不只是按国家筛选，还能进一步细分到具体的经济圈和省份，精准锁定目标市场。' },
-              { title: '合规运营', desc: '只做商机对接，不涉及新闻采集和传播，完全规避新闻出版相关法规风险。' },
-              { title: '持续自动更新', desc: '数据采集系统每6小时自动运行，确保商机信息始终是最新的。' },
-            ].map(item => (
-              <div key={item.title} className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-stone-900">{item.title}</h3>
-                  <p className="text-sm text-stone-500 mt-0.5">{item.desc}</p>
-                </div>
-              </div>
-            ))}
           </div>
-        </div>
+        </section>
 
-        {/* Group Network */}
-        <div className="bg-white rounded-2xl border border-stone-200 p-10 mb-8">
-          <h2 className="text-2xl font-black text-stone-900 mb-6">集团站点</h2>
-          <p className="text-sm text-stone-500 mb-6 leading-relaxed">
-            上海张小强企业咨询事务所旗下还运营以下平台，欢迎互访：
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              {
-                label: 'AfricaZero 非洲零关税',
-                url: 'https://africa.zxqconsulting.com/',
-                desc: '非洲零关税全链路决策平台',
-                icon: '🌍',
-              },
-              {
-                label: '张小强企业咨询',
-                url: 'https://www.zxqconsulting.com/',
-                desc: '本草产品出海 · 日本/澳洲/东南亚市场进入',
-                icon: '🏢',
-              },
-              {
-                label: 'Global2China 海外优品',
-                url: 'https://global2china.zxqconsulting.com/',
-                desc: '海外优品·中国上市 · 日本欧洲东南亚进口服务',
-                icon: '🌏',
-              },
-            ].map(site => (
-              <a
-                key={site.url}
-                href={site.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-start gap-3 p-4 rounded-xl border border-stone-200 hover:border-blue-300 hover:bg-blue-50 transition-all group"
-              >
-                <span className="text-2xl flex-shrink-0">{site.icon}</span>
-                <div>
-                  <p className="text-sm font-bold text-stone-800 group-hover:text-blue-800 transition-colors">{site.label}</p>
-                  <p className="text-xs text-stone-400 mt-0.5 leading-relaxed">{site.desc}</p>
+        {/* Values */}
+        <section className="py-20 bg-gradient-to-b from-transparent to-brand-950/20">
+          <div className="max-w-5xl mx-auto px-4">
+            <h2 className="text-2xl font-bold text-white mb-8 text-center">我们的价值观</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {VALUES.map((v, i) => (
+                <div key={i} className="p-6 rounded-2xl bg-white/[0.04] border border-white/5 hover:border-brand-500/20 transition-all">
+                  <v.icon className="w-8 h-8 text-brand-400 mb-4" />
+                  <h3 className="font-semibold text-white mb-2">{v.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{v.desc}</p>
                 </div>
-                <svg className="w-4 h-4 text-stone-300 group-hover:text-blue-400 flex-shrink-0 mt-1 ml-auto transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div className="bg-gradient-to-r from-blue-900 to-blue-950 rounded-2xl p-10 text-white text-center">
-          <h2 className="text-2xl font-black mb-4">准备好开始了吗？</h2>
-          <p className="text-blue-200 mb-6">浏览商机不需要注册，完全免费。</p>
-          <Link
-            href="/opportunities"
-            className="inline-flex items-center gap-2 px-6 py-3 text-base font-bold text-blue-900 bg-amber-400 hover:bg-amber-300 rounded-xl transition-colors shadow-lg"
-          >
-            立即浏览商机
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </Link>
-        </div>
+        {/* Team */}
+        <section className="py-20">
+          <div className="max-w-4xl mx-auto px-4">
+            <h2 className="text-2xl font-bold text-white mb-8 text-center">核心团队</h2>
+            <div className="space-y-6">
+              {TEAM.map((member) => (
+                <div key={member.name} className="flex gap-6 p-6 rounded-2xl bg-white/[0.04] border border-white/5">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-600 to-purple-700 flex items-center justify-center text-2xl font-bold text-white shrink-0">
+                    {member.avatar}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="font-semibold text-white text-lg">{member.name}</h3>
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-brand-500/10 text-brand-400 border border-brand-500/20">{member.title}</span>
+                    </div>
+                    <p className="text-sm text-gray-400 leading-relaxed">{member.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-        <div className="mt-8 text-center">
-          <Link href="/" className="text-sm text-stone-400 hover:text-stone-600 transition-colors">
-            &larr; 返回首页
-          </Link>
-        </div>
-      </div>
-    </SiteLayout>
+        {/* CTA */}
+        <section className="py-20 text-center">
+          <div className="max-w-2xl mx-auto px-4">
+            <h2 className="text-2xl font-bold text-white mb-4">准备好开启合作了吗？</h2>
+            <p className="text-gray-400 mb-8">无论您是有明确出海计划，还是刚刚萌生想法，我们都愿意与您深入聊聊。</p>
+            <Link href="/contact" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-brand-600 text-white font-semibold hover:bg-brand-500 transition-all">
+              预约咨询
+            </Link>
+          </div>
+        </section>
+      </main>
+    </>
   );
 }
